@@ -1,0 +1,2462 @@
+MONEYBOARD — AI BUILD SERIES
+PART 02 — MONEY DOMAIN + ROOM DATABASE FOUNDATION
+=================================================
+
+PURPOSE
+-------
+This is the complete Part 02 implementation that builds on Part 01. It creates the first real finance data foundation: exact money handling, Room 3 persistence, accounts, categories, transactions, repositories, seed data, tests, schema export, and acceptance criteria.
+
+Do NOT connect the dashboard to these repositories yet. Part 03 will replace the Part 01 demo values with real Room-backed dashboard state.
+
+BASELINE
+--------
+App: MoneyBoard
+Package: com.premraj.moneyboard
+minSdk: 26
+compileSdk/targetSdk: 37
+AGP: 9.4.0
+Gradle: 9.6.0
+JDK: 17
+Kotlin: 2.3.21
+Room 3: 3.0.3
+SQLite: 2.7.1
+KSP: 2.3.12
+Coroutines: 1.10.2
+
+CORE DATA RULES
+---------------
+1. Never store money using Double/Float. Persist integer minor units using Long.
+2. Transaction amounts are positive. Direction is represented by TransactionType.
+3. Store both localDateEpochDay and occurredAtEpochMillis. Monthly accounting uses localDateEpochDay so timezone changes cannot silently move transactions into another day/month.
+4. User-created record IDs use UUID strings. System seed IDs are stable readable strings.
+5. Transactions are soft-deleted using deletedAtEpochMillis. Accounts/categories are archived.
+6. Never store enum ordinal values. Store explicit stable string values.
+7. Room schema JSON must be exported and committed to Git.
+
+EXPECTED TREE
+-------------
+app/src/main/java/com/premraj/moneyboard/
+  MoneyBoardApplication.kt
+  core/common/IdProvider.kt
+  core/common/TimeProvider.kt
+  core/domain/model/Money.kt
+  core/domain/model/AccountType.kt
+  core/domain/model/TransactionType.kt
+  core/domain/model/CategoryType.kt
+  core/domain/model/CategoryGroup.kt
+  core/domain/model/Account.kt
+  core/domain/model/Category.kt
+  core/domain/model/FinanceTransaction.kt
+  core/domain/util/DateRanges.kt
+  core/domain/repository/AccountRepository.kt
+  core/domain/repository/CategoryRepository.kt
+  core/domain/repository/TransactionRepository.kt
+  core/database/entity/AccountEntity.kt
+  core/database/entity/CategoryEntity.kt
+  core/database/entity/TransactionEntity.kt
+  core/database/projection/CategoryTotalRow.kt
+  core/database/dao/AccountDao.kt
+  core/database/dao/CategoryDao.kt
+  core/database/dao/TransactionDao.kt
+  core/database/MoneyBoardDatabase.kt
+  core/database/MoneyBoardDatabaseFactory.kt
+  core/database/SeedData.kt
+  core/database/DatabaseInitializer.kt
+  core/data/mapper/AccountMapper.kt
+  core/data/mapper/CategoryMapper.kt
+  core/data/mapper/TransactionMapper.kt
+  core/data/repository/RoomAccountRepository.kt
+  core/data/repository/RoomCategoryRepository.kt
+  core/data/repository/RoomTransactionRepository.kt
+  di/AppContainer.kt
+
+app/src/test/java/com/premraj/moneyboard/core/domain/
+  MoneyTest.kt
+  DateRangesTest.kt
+  DomainStorageEnumTest.kt
+
+app/src/androidTest/java/com/premraj/moneyboard/
+  core/database/MoneyBoardDatabaseTest.kt
+  core/database/DatabaseInitializerTest.kt
+  data/repository/RoomTransactionRepositoryTest.kt
+  testing/SuspendAssertions.kt
+
+================================================================================
+1. UPDATE /gradle/libs.versions.toml
+================================================================================
+
+[versions]
+agp = "9.4.0"
+kotlin = "2.3.21"
+ksp = "2.3.12"
+composeBom = "2026.08.00"
+activityCompose = "1.13.0"
+lifecycle = "2.12.0"
+coreKtx = "1.19.0"
+room3 = "3.0.3"
+sqlite = "2.7.1"
+coroutines = "1.10.2"
+junit4 = "4.13.2"
+androidxTestCore = "1.7.0"
+androidxTestRunner = "1.7.0"
+androidxTestExtJunit = "1.3.0"
+
+[libraries]
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+androidx-compose-ui = { module = "androidx.compose.ui:ui" }
+androidx-compose-ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
+androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
+androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
+androidx-room3-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room3" }
+androidx-room3-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room3" }
+androidx-room3-testing = { module = "androidx.room3:room3-testing", version.ref = "room3" }
+androidx-sqlite-framework = { module = "androidx.sqlite:sqlite-framework", version.ref = "sqlite" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+junit4 = { module = "junit:junit", version.ref = "junit4" }
+androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+
+================================================================================
+2. UPDATE /build.gradle.kts
+================================================================================
+
+plugins {
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.compose.compiler) apply false
+    alias(libs.plugins.ksp) apply false
+}
+
+================================================================================
+3. UPDATE /app/build.gradle.kts
+================================================================================
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.ksp)
+}
+
+android {
+    namespace = "com.premraj.moneyboard"
+    compileSdk = 37
+
+    defaultConfig {
+        applicationId = "com.premraj.moneyboard"
+        minSdk = 26
+        targetSdk = 37
+        versionCode = 1
+        versionName = "0.2.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    sourceSets {
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
+}
+
+ksp {
+    arg("room.schemaLocation", file("$projectDir/schemas").path)
+}
+
+dependencies {
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.activity.compose)
+
+    val composeBom = platform(libs.androidx.compose.bom)
+    implementation(composeBom)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
+
+    implementation(libs.androidx.room3.runtime)
+    ksp(libs.androidx.room3.compiler)
+    implementation(libs.androidx.sqlite.framework)
+    implementation(libs.kotlinx.coroutines.android)
+
+    testImplementation(libs.junit4)
+    testImplementation(libs.kotlinx.coroutines.test)
+
+    androidTestImplementation(libs.junit4)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.room3.testing)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+
+    debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+IMPORTANT: use androidx.room3 imports. Do not mix androidx.room Room 2 APIs into this database layer.
+
+================================================================================
+4. COMMON PROVIDERS
+================================================================================
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/common/IdProvider.kt
+
+package com.premraj.moneyboard.core.common
+
+import java.util.UUID
+
+fun interface IdProvider {
+    fun newId(): String
+}
+
+object UuidIdProvider : IdProvider {
+    override fun newId(): String = UUID.randomUUID().toString()
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/common/TimeProvider.kt
+
+package com.premraj.moneyboard.core.common
+
+fun interface TimeProvider {
+    fun nowEpochMillis(): Long
+}
+
+object SystemTimeProvider : TimeProvider {
+    override fun nowEpochMillis(): Long = System.currentTimeMillis()
+}
+
+================================================================================
+5. DOMAIN MONEY
+PATH: app/src/main/java/com/premraj/moneyboard/core/domain/model/Money.kt
+================================================================================
+
+package com.premraj.moneyboard.core.domain.model
+
+import java.math.BigDecimal
+import java.math.RoundingMode
+import java.util.Currency
+
+data class Money(
+    val amountMinor: Long,
+    val currencyCode: String
+) {
+    init {
+        currency(currencyCode)
+    }
+
+    operator fun plus(other: Money): Money {
+        require(currencyCode == other.currencyCode) {
+            "Currency mismatch: $currencyCode != ${other.currencyCode}"
+        }
+        return Money(Math.addExact(amountMinor, other.amountMinor), currencyCode)
+    }
+
+    operator fun minus(other: Money): Money {
+        require(currencyCode == other.currencyCode) {
+            "Currency mismatch: $currencyCode != ${other.currencyCode}"
+        }
+        return Money(Math.subtractExact(amountMinor, other.amountMinor), currencyCode)
+    }
+
+    fun isPositive() = amountMinor > 0L
+    fun isNegative() = amountMinor < 0L
+    fun isZero() = amountMinor == 0L
+
+    companion object {
+        fun zero(currencyCode: String) = Money(0L, currencyCode)
+
+        fun fromMajor(amountMajor: BigDecimal, currencyCode: String): Money {
+            val currency = currency(currencyCode)
+            val digits = currency.defaultFractionDigits
+            require(digits >= 0) { "Unsupported fraction digits for $currencyCode" }
+            val minor = amountMajor
+                .movePointRight(digits)
+                .setScale(0, RoundingMode.UNNECESSARY)
+                .longValueExact()
+            return Money(minor, currency.currencyCode)
+        }
+
+        fun sum(values: Iterable<Money>, currencyCode: String): Money {
+            var total = zero(currencyCode)
+            values.forEach { total += it }
+            return total
+        }
+
+        private fun currency(code: String): Currency {
+            require(code.length == 3 && code == code.uppercase()) {
+                "currencyCode must be an uppercase ISO-4217 code"
+            }
+            return try {
+                Currency.getInstance(code)
+            } catch (e: IllegalArgumentException) {
+                throw IllegalArgumentException("Unsupported currency code: $code", e)
+            }
+        }
+    }
+}
+
+================================================================================
+6. DOMAIN ENUMS AND MODELS
+================================================================================
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/domain/model/AccountType.kt
+
+package com.premraj.moneyboard.core.domain.model
+
+enum class AccountType(val storageValue: String) {
+    CASH("CASH"),
+    BANK("BANK"),
+    CREDIT_CARD("CREDIT_CARD"),
+    WALLET("WALLET"),
+    INVESTMENT("INVESTMENT"),
+    OTHER("OTHER");
+
+    companion object {
+        fun fromStorage(value: String): AccountType =
+            entries.firstOrNull { it.storageValue == value }
+                ?: error("Unknown AccountType storage value: $value")
+    }
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/domain/model/TransactionType.kt
+
+package com.premraj.moneyboard.core.domain.model
+
+enum class TransactionType(val storageValue: String) {
+    INCOME("INCOME"),
+    EXPENSE("EXPENSE"),
+    SAVING("SAVING"),
+    INVESTMENT("INVESTMENT"),
+    TRANSFER("TRANSFER");
+
+    companion object {
+        fun fromStorage(value: String): TransactionType =
+            entries.firstOrNull { it.storageValue == value }
+                ?: error("Unknown TransactionType storage value: $value")
+    }
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/domain/model/CategoryType.kt
+
+package com.premraj.moneyboard.core.domain.model
+
+enum class CategoryType(val storageValue: String) {
+    INCOME("INCOME"),
+    EXPENSE("EXPENSE"),
+    SAVING("SAVING"),
+    INVESTMENT("INVESTMENT"),
+    TRANSFER("TRANSFER");
+
+    fun accepts(transactionType: TransactionType): Boolean =
+        storageValue == transactionType.storageValue
+
+    companion object {
+        fun fromStorage(value: String): CategoryType =
+            entries.firstOrNull { it.storageValue == value }
+                ?: error("Unknown CategoryType storage value: $value")
+    }
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/domain/model/CategoryGroup.kt
+
+package com.premraj.moneyboard.core.domain.model
+
+enum class CategoryGroup(val storageValue: String) {
+    INCOME("INCOME"),
+    HOUSING("HOUSING"),
+    FOOD("FOOD"),
+    UTILITIES("UTILITIES"),
+    TRANSPORT("TRANSPORT"),
+    LIFESTYLE("LIFESTYLE"),
+    HEALTH("HEALTH"),
+    EDUCATION("EDUCATION"),
+    FAMILY_SUPPORT("FAMILY_SUPPORT"),
+    TRAVEL("TRAVEL"),
+    SAVINGS("SAVINGS"),
+    INVESTMENTS("INVESTMENTS"),
+    INSURANCE("INSURANCE"),
+    DEBT("DEBT"),
+    TRANSFER("TRANSFER"),
+    OTHER("OTHER");
+
+    companion object {
+        fun fromStorage(value: String): CategoryGroup =
+            entries.firstOrNull { it.storageValue == value }
+                ?: error("Unknown CategoryGroup storage value: $value")
+    }
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/domain/model/Account.kt
+
+package com.premraj.moneyboard.core.domain.model
+
+data class Account(
+    val id: String,
+    val name: String,
+    val type: AccountType,
+    val openingBalance: Money,
+    val includeInNetWorth: Boolean,
+    val archived: Boolean,
+    val createdAtEpochMillis: Long,
+    val updatedAtEpochMillis: Long
+)
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/domain/model/Category.kt
+
+package com.premraj.moneyboard.core.domain.model
+
+data class Category(
+    val id: String,
+    val name: String,
+    val iconKey: String,
+    val type: CategoryType,
+    val group: CategoryGroup,
+    val sortOrder: Int,
+    val systemCategory: Boolean,
+    val archived: Boolean,
+    val createdAtEpochMillis: Long,
+    val updatedAtEpochMillis: Long
+)
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/domain/model/FinanceTransaction.kt
+
+package com.premraj.moneyboard.core.domain.model
+
+import java.time.Instant
+import java.time.LocalDate
+
+data class FinanceTransaction(
+    val id: String,
+    val accountId: String,
+    val categoryId: String,
+    val type: TransactionType,
+    val amount: Money,
+    val accountingDate: LocalDate,
+    val occurredAt: Instant,
+    val note: String?,
+    val merchant: String?,
+    val createdAtEpochMillis: Long,
+    val updatedAtEpochMillis: Long,
+    val deletedAtEpochMillis: Long?
+) {
+    init {
+        require(amount.amountMinor > 0L) { "Transaction amount must be greater than zero" }
+        require(note == null || note.length <= MAX_NOTE_LENGTH) {
+            "Transaction note cannot exceed $MAX_NOTE_LENGTH characters"
+        }
+        require(merchant == null || merchant.length <= MAX_MERCHANT_LENGTH) {
+            "Merchant cannot exceed $MAX_MERCHANT_LENGTH characters"
+        }
+    }
+
+    companion object {
+        const val MAX_NOTE_LENGTH = 500
+        const val MAX_MERCHANT_LENGTH = 120
+    }
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/domain/util/DateRanges.kt
+
+package com.premraj.moneyboard.core.domain.util
+
+import java.time.LocalDate
+import java.time.YearMonth
+
+data class EpochDayRange(
+    val startInclusive: Long,
+    val endInclusive: Long
+) {
+    init {
+        require(startInclusive <= endInclusive)
+    }
+}
+
+fun YearMonth.toEpochDayRange(): EpochDayRange = EpochDayRange(
+    startInclusive = atDay(1).toEpochDay(),
+    endInclusive = atEndOfMonth().toEpochDay()
+)
+
+fun closedDateRange(start: LocalDate, endInclusive: LocalDate): EpochDayRange {
+    require(!endInclusive.isBefore(start)) { "endInclusive must not be before start" }
+    return EpochDayRange(start.toEpochDay(), endInclusive.toEpochDay())
+}
+
+================================================================================
+7. ROOM ENTITIES
+================================================================================
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/database/entity/AccountEntity.kt
+
+package com.premraj.moneyboard.core.database.entity
+
+import androidx.room3.Entity
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
+
+@Entity(
+    tableName = "accounts",
+    indices = [
+        Index(value = ["archived"]),
+        Index(value = ["type"])
+    ]
+)
+data class AccountEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val type: String,
+    val openingBalanceMinor: Long,
+    val currencyCode: String,
+    val includeInNetWorth: Boolean,
+    val archived: Boolean,
+    val createdAtEpochMillis: Long,
+    val updatedAtEpochMillis: Long
+)
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/database/entity/CategoryEntity.kt
+
+package com.premraj.moneyboard.core.database.entity
+
+import androidx.room3.Entity
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
+
+@Entity(
+    tableName = "categories",
+    indices = [
+        Index(value = ["type", "archived"]),
+        Index(value = ["groupKey"]),
+        Index(value = ["sortOrder"])
+    ]
+)
+data class CategoryEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val iconKey: String,
+    val type: String,
+    val groupKey: String,
+    val sortOrder: Int,
+    val systemCategory: Boolean,
+    val archived: Boolean,
+    val createdAtEpochMillis: Long,
+    val updatedAtEpochMillis: Long
+)
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/database/entity/TransactionEntity.kt
+
+package com.premraj.moneyboard.core.database.entity
+
+import androidx.room3.Entity
+import androidx.room3.ForeignKey
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
+
+@Entity(
+    tableName = "transactions",
+    foreignKeys = [
+        ForeignKey(
+            entity = AccountEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["accountId"],
+            onDelete = ForeignKey.NO_ACTION,
+            onUpdate = ForeignKey.NO_ACTION
+        ),
+        ForeignKey(
+            entity = CategoryEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["categoryId"],
+            onDelete = ForeignKey.NO_ACTION,
+            onUpdate = ForeignKey.NO_ACTION
+        )
+    ],
+    indices = [
+        Index(value = ["accountId"]),
+        Index(value = ["categoryId"]),
+        Index(value = ["type"]),
+        Index(value = ["localDateEpochDay"]),
+        Index(value = ["localDateEpochDay", "type", "deletedAtEpochMillis"]),
+        Index(value = ["categoryId", "localDateEpochDay"]),
+        Index(value = ["deletedAtEpochMillis"])
+    ]
+)
+data class TransactionEntity(
+    @PrimaryKey val id: String,
+    val accountId: String,
+    val categoryId: String,
+    val type: String,
+    val amountMinor: Long,
+    val currencyCode: String,
+    val localDateEpochDay: Long,
+    val occurredAtEpochMillis: Long,
+    val note: String?,
+    val merchant: String?,
+    val createdAtEpochMillis: Long,
+    val updatedAtEpochMillis: Long,
+    val deletedAtEpochMillis: Long?
+)
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/database/projection/CategoryTotalRow.kt
+
+package com.premraj.moneyboard.core.database.projection
+
+data class CategoryTotalRow(
+    val categoryId: String,
+    val totalMinor: Long
+)
+
+================================================================================
+8. DAOs
+================================================================================
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/database/dao/AccountDao.kt
+
+package com.premraj.moneyboard.core.database.dao
+
+import androidx.room3.Dao
+import androidx.room3.Insert
+import androidx.room3.OnConflictStrategy
+import androidx.room3.Query
+import androidx.room3.Update
+import com.premraj.moneyboard.core.database.entity.AccountEntity
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface AccountDao {
+    @Query("SELECT * FROM accounts WHERE archived = 0 ORDER BY name COLLATE NOCASE ASC")
+    fun observeActive(): Flow<List<AccountEntity>>
+
+    @Query("SELECT * FROM accounts WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): AccountEntity?
+
+    @Query("SELECT COUNT(*) FROM accounts")
+    suspend fun countAll(): Long
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insert(account: AccountEntity)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIfAbsent(accounts: List<AccountEntity>)
+
+    @Update
+    suspend fun update(account: AccountEntity)
+
+    @Query("UPDATE accounts SET archived = 1, updatedAtEpochMillis = :updatedAt WHERE id = :id")
+    suspend fun archive(id: String, updatedAt: Long): Int
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/database/dao/CategoryDao.kt
+
+package com.premraj.moneyboard.core.database.dao
+
+import androidx.room3.Dao
+import androidx.room3.Insert
+import androidx.room3.OnConflictStrategy
+import androidx.room3.Query
+import androidx.room3.Update
+import com.premraj.moneyboard.core.database.entity.CategoryEntity
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface CategoryDao {
+    @Query("SELECT * FROM categories WHERE archived = 0 ORDER BY type ASC, sortOrder ASC, name COLLATE NOCASE ASC")
+    fun observeActive(): Flow<List<CategoryEntity>>
+
+    @Query("SELECT * FROM categories WHERE type = :type AND archived = 0 ORDER BY sortOrder ASC, name COLLATE NOCASE ASC")
+    fun observeActiveByType(type: String): Flow<List<CategoryEntity>>
+
+    @Query("SELECT * FROM categories WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): CategoryEntity?
+
+    @Query("SELECT COUNT(*) FROM categories")
+    suspend fun countAll(): Long
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insert(category: CategoryEntity)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIfAbsent(categories: List<CategoryEntity>)
+
+    @Update
+    suspend fun update(category: CategoryEntity)
+
+    @Query("UPDATE categories SET archived = 1, updatedAtEpochMillis = :updatedAt WHERE id = :id AND systemCategory = 0")
+    suspend fun archiveCustomCategory(id: String, updatedAt: Long): Int
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/database/dao/TransactionDao.kt
+
+package com.premraj.moneyboard.core.database.dao
+
+import androidx.room3.Dao
+import androidx.room3.Insert
+import androidx.room3.OnConflictStrategy
+import androidx.room3.Query
+import androidx.room3.Update
+import com.premraj.moneyboard.core.database.entity.TransactionEntity
+import com.premraj.moneyboard.core.database.projection.CategoryTotalRow
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface TransactionDao {
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insert(transaction: TransactionEntity)
+
+    @Update
+    suspend fun update(transaction: TransactionEntity)
+
+    @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
+    suspend fun getByIdIncludingDeleted(id: String): TransactionEntity?
+
+    @Query("SELECT * FROM transactions WHERE id = :id AND deletedAtEpochMillis IS NULL LIMIT 1")
+    suspend fun getActiveById(id: String): TransactionEntity?
+
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE localDateEpochDay BETWEEN :startEpochDay AND :endEpochDay
+          AND deletedAtEpochMillis IS NULL
+        ORDER BY localDateEpochDay DESC, occurredAtEpochMillis DESC, createdAtEpochMillis DESC
+        """
+    )
+    fun observeActiveBetween(startEpochDay: Long, endEpochDay: Long): Flow<List<TransactionEntity>>
+
+    @Query(
+        """
+        SELECT COALESCE(SUM(amountMinor), 0)
+        FROM transactions
+        WHERE localDateEpochDay BETWEEN :startEpochDay AND :endEpochDay
+          AND type = :type
+          AND currencyCode = :currencyCode
+          AND deletedAtEpochMillis IS NULL
+        """
+    )
+    fun observeTotalForTypeBetween(
+        startEpochDay: Long,
+        endEpochDay: Long,
+        type: String,
+        currencyCode: String
+    ): Flow<Long>
+
+    @Query(
+        """
+        SELECT categoryId, COALESCE(SUM(amountMinor), 0) AS totalMinor
+        FROM transactions
+        WHERE localDateEpochDay BETWEEN :startEpochDay AND :endEpochDay
+          AND type = :type
+          AND currencyCode = :currencyCode
+          AND deletedAtEpochMillis IS NULL
+        GROUP BY categoryId
+        ORDER BY totalMinor DESC
+        """
+    )
+    fun observeCategoryTotalsBetween(
+        startEpochDay: Long,
+        endEpochDay: Long,
+        type: String,
+        currencyCode: String
+    ): Flow<List<CategoryTotalRow>>
+
+    @Query(
+        """
+        UPDATE transactions
+        SET deletedAtEpochMillis = :deletedAt, updatedAtEpochMillis = :deletedAt
+        WHERE id = :transactionId AND deletedAtEpochMillis IS NULL
+        """
+    )
+    suspend fun softDelete(transactionId: String, deletedAt: Long): Int
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE deletedAtEpochMillis IS NULL")
+    suspend fun countActive(): Long
+}
+
+================================================================================
+9. DATABASE + FACTORY
+================================================================================
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/database/MoneyBoardDatabase.kt
+
+package com.premraj.moneyboard.core.database
+
+import androidx.room3.Database
+import androidx.room3.RoomDatabase
+import com.premraj.moneyboard.core.database.dao.AccountDao
+import com.premraj.moneyboard.core.database.dao.CategoryDao
+import com.premraj.moneyboard.core.database.dao.TransactionDao
+import com.premraj.moneyboard.core.database.entity.AccountEntity
+import com.premraj.moneyboard.core.database.entity.CategoryEntity
+import com.premraj.moneyboard.core.database.entity.TransactionEntity
+
+@Database(
+    entities = [AccountEntity::class, CategoryEntity::class, TransactionEntity::class],
+    version = 1,
+    exportSchema = true
+)
+abstract class MoneyBoardDatabase : RoomDatabase() {
+    abstract fun accountDao(): AccountDao
+    abstract fun categoryDao(): CategoryDao
+    abstract fun transactionDao(): TransactionDao
+
+    companion object {
+        const val DATABASE_NAME = "moneyboard.db"
+        const val DATABASE_VERSION = 1
+    }
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/database/MoneyBoardDatabaseFactory.kt
+
+package com.premraj.moneyboard.core.database
+
+import android.content.Context
+import androidx.room3.Room
+import androidx.sqlite.driver.AndroidSQLiteDriver
+
+object MoneyBoardDatabaseFactory {
+    fun create(context: Context): MoneyBoardDatabase =
+        Room.databaseBuilder<MoneyBoardDatabase>(
+            context = context.applicationContext,
+            name = MoneyBoardDatabase.DATABASE_NAME
+        )
+            .setDriver(AndroidSQLiteDriver())
+            .build()
+}
+
+================================================================================
+10. SEED DATA
+PATH: app/src/main/java/com/premraj/moneyboard/core/database/SeedData.kt
+================================================================================
+
+package com.premraj.moneyboard.core.database
+
+import com.premraj.moneyboard.core.database.entity.AccountEntity
+import com.premraj.moneyboard.core.database.entity.CategoryEntity
+import com.premraj.moneyboard.core.domain.model.AccountType
+import com.premraj.moneyboard.core.domain.model.CategoryGroup
+import com.premraj.moneyboard.core.domain.model.CategoryType
+
+object SeedIds {
+    const val CASH_ACCOUNT = "account.cash"
+    const val INCOME_SALARY = "category.income.salary"
+    const val INCOME_FREELANCE = "category.income.freelance"
+    const val INCOME_OTHER = "category.income.other"
+    const val EXPENSE_RENT = "category.expense.rent"
+    const val EXPENSE_GROCERIES = "category.expense.groceries"
+    const val EXPENSE_GAS = "category.expense.gas"
+    const val EXPENSE_HOUSE_HELP = "category.expense.house_help"
+    const val EXPENSE_DINING = "category.expense.dining"
+    const val EXPENSE_ELECTRICITY = "category.expense.electricity"
+    const val EXPENSE_WATER = "category.expense.water"
+    const val EXPENSE_WIFI = "category.expense.wifi"
+    const val EXPENSE_MOBILE = "category.expense.mobile"
+    const val EXPENSE_FUEL = "category.expense.fuel"
+    const val EXPENSE_CAB = "category.expense.cab"
+    const val EXPENSE_PUBLIC_TRANSPORT = "category.expense.public_transport"
+    const val EXPENSE_LAUNDRY = "category.expense.laundry"
+    const val EXPENSE_SHOPPING = "category.expense.shopping"
+    const val EXPENSE_GYM = "category.expense.gym"
+    const val EXPENSE_FITNESS_DIET = "category.expense.fitness_diet"
+    const val EXPENSE_SALON = "category.expense.salon"
+    const val EXPENSE_OUTING = "category.expense.outing"
+    const val EXPENSE_TRAVEL = "category.expense.travel"
+    const val EXPENSE_HOMETOWN = "category.expense.hometown"
+    const val EXPENSE_MEDICINE = "category.expense.medicine"
+    const val EXPENSE_FAMILY_SUPPORT = "category.expense.family_support"
+    const val EXPENSE_EDUCATION = "category.expense.education"
+    const val EXPENSE_EMI = "category.expense.emi"
+    const val EXPENSE_SUBSCRIPTIONS = "category.expense.subscriptions"
+    const val EXPENSE_OTHER = "category.expense.other"
+    const val SAVING_EMERGENCY_FUND = "category.saving.emergency_fund"
+    const val SAVING_GENERAL = "category.saving.general"
+    const val INVESTMENT_SIP = "category.investment.sip"
+    const val INVESTMENT_OTHER = "category.investment.other"
+    const val TRANSFER_INTERNAL = "category.transfer.internal"
+}
+
+object DefaultSeedData {
+    fun defaultAccounts(now: Long) = listOf(
+        AccountEntity(
+            id = SeedIds.CASH_ACCOUNT,
+            name = "Cash",
+            type = AccountType.CASH.storageValue,
+            openingBalanceMinor = 0L,
+            currencyCode = "INR",
+            includeInNetWorth = true,
+            archived = false,
+            createdAtEpochMillis = now,
+            updatedAtEpochMillis = now
+        )
+    )
+
+    fun defaultCategories(now: Long): List<CategoryEntity> = listOf(
+        c(SeedIds.INCOME_SALARY, "Salary", "salary", CategoryType.INCOME, CategoryGroup.INCOME, 10, now),
+        c(SeedIds.INCOME_FREELANCE, "Freelance", "work", CategoryType.INCOME, CategoryGroup.INCOME, 20, now),
+        c(SeedIds.INCOME_OTHER, "Other Income", "income_other", CategoryType.INCOME, CategoryGroup.INCOME, 30, now),
+        c(SeedIds.EXPENSE_RENT, "Rent", "home", CategoryType.EXPENSE, CategoryGroup.HOUSING, 100, now),
+        c(SeedIds.EXPENSE_GROCERIES, "Groceries", "groceries", CategoryType.EXPENSE, CategoryGroup.FOOD, 110, now),
+        c(SeedIds.EXPENSE_GAS, "Gas / LPG", "gas", CategoryType.EXPENSE, CategoryGroup.UTILITIES, 120, now),
+        c(SeedIds.EXPENSE_HOUSE_HELP, "Maid / House Help", "house_help", CategoryType.EXPENSE, CategoryGroup.HOUSING, 130, now),
+        c(SeedIds.EXPENSE_DINING, "Dining / Online Food", "food", CategoryType.EXPENSE, CategoryGroup.FOOD, 140, now),
+        c(SeedIds.EXPENSE_ELECTRICITY, "Electricity", "electricity", CategoryType.EXPENSE, CategoryGroup.UTILITIES, 150, now),
+        c(SeedIds.EXPENSE_WATER, "Water", "water", CategoryType.EXPENSE, CategoryGroup.UTILITIES, 160, now),
+        c(SeedIds.EXPENSE_WIFI, "Wi-Fi", "wifi", CategoryType.EXPENSE, CategoryGroup.UTILITIES, 170, now),
+        c(SeedIds.EXPENSE_MOBILE, "Mobile Recharge", "phone", CategoryType.EXPENSE, CategoryGroup.UTILITIES, 180, now),
+        c(SeedIds.EXPENSE_FUEL, "Fuel", "fuel", CategoryType.EXPENSE, CategoryGroup.TRANSPORT, 190, now),
+        c(SeedIds.EXPENSE_CAB, "Cab / Auto / Rapido", "cab", CategoryType.EXPENSE, CategoryGroup.TRANSPORT, 200, now),
+        c(SeedIds.EXPENSE_PUBLIC_TRANSPORT, "Public Transport", "bus", CategoryType.EXPENSE, CategoryGroup.TRANSPORT, 210, now),
+        c(SeedIds.EXPENSE_LAUNDRY, "Laundry", "laundry", CategoryType.EXPENSE, CategoryGroup.LIFESTYLE, 220, now),
+        c(SeedIds.EXPENSE_SHOPPING, "Shopping", "shopping", CategoryType.EXPENSE, CategoryGroup.LIFESTYLE, 230, now),
+        c(SeedIds.EXPENSE_GYM, "Gym", "fitness", CategoryType.EXPENSE, CategoryGroup.LIFESTYLE, 240, now),
+        c(SeedIds.EXPENSE_FITNESS_DIET, "Fitness Diet / Supplements", "fitness_diet", CategoryType.EXPENSE, CategoryGroup.HEALTH, 250, now),
+        c(SeedIds.EXPENSE_SALON, "Salon / Skincare", "salon", CategoryType.EXPENSE, CategoryGroup.LIFESTYLE, 260, now),
+        c(SeedIds.EXPENSE_OUTING, "Weekend Outing", "outing", CategoryType.EXPENSE, CategoryGroup.LIFESTYLE, 270, now),
+        c(SeedIds.EXPENSE_TRAVEL, "Travel", "travel", CategoryType.EXPENSE, CategoryGroup.TRAVEL, 280, now),
+        c(SeedIds.EXPENSE_HOMETOWN, "Hometown Visit", "home_travel", CategoryType.EXPENSE, CategoryGroup.TRAVEL, 290, now),
+        c(SeedIds.EXPENSE_MEDICINE, "Medicine", "medicine", CategoryType.EXPENSE, CategoryGroup.HEALTH, 300, now),
+        c(SeedIds.EXPENSE_FAMILY_SUPPORT, "Family Support", "family", CategoryType.EXPENSE, CategoryGroup.FAMILY_SUPPORT, 310, now),
+        c(SeedIds.EXPENSE_EDUCATION, "Education", "education", CategoryType.EXPENSE, CategoryGroup.EDUCATION, 320, now),
+        c(SeedIds.EXPENSE_EMI, "EMI", "debt", CategoryType.EXPENSE, CategoryGroup.DEBT, 330, now),
+        c(SeedIds.EXPENSE_SUBSCRIPTIONS, "Subscriptions", "subscriptions", CategoryType.EXPENSE, CategoryGroup.LIFESTYLE, 340, now),
+        c(SeedIds.EXPENSE_OTHER, "Other Expense", "other", CategoryType.EXPENSE, CategoryGroup.OTHER, 350, now),
+        c(SeedIds.SAVING_EMERGENCY_FUND, "Emergency Fund", "emergency_fund", CategoryType.SAVING, CategoryGroup.SAVINGS, 400, now),
+        c(SeedIds.SAVING_GENERAL, "General Savings", "savings", CategoryType.SAVING, CategoryGroup.SAVINGS, 410, now),
+        c(SeedIds.INVESTMENT_SIP, "SIP", "sip", CategoryType.INVESTMENT, CategoryGroup.INVESTMENTS, 500, now),
+        c(SeedIds.INVESTMENT_OTHER, "Other Investment", "investment", CategoryType.INVESTMENT, CategoryGroup.INVESTMENTS, 510, now),
+        c(SeedIds.TRANSFER_INTERNAL, "Internal Transfer", "transfer", CategoryType.TRANSFER, CategoryGroup.TRANSFER, 600, now)
+    )
+
+    private fun c(
+        id: String,
+        name: String,
+        iconKey: String,
+        type: CategoryType,
+        group: CategoryGroup,
+        sort: Int,
+        now: Long
+    ) = CategoryEntity(
+        id = id,
+        name = name,
+        iconKey = iconKey,
+        type = type.storageValue,
+        groupKey = group.storageValue,
+        sortOrder = sort,
+        systemCategory = true,
+        archived = false,
+        createdAtEpochMillis = now,
+        updatedAtEpochMillis = now
+    )
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/database/DatabaseInitializer.kt
+
+package com.premraj.moneyboard.core.database
+
+import com.premraj.moneyboard.core.common.TimeProvider
+
+class DatabaseInitializer(
+    private val database: MoneyBoardDatabase,
+    private val timeProvider: TimeProvider
+) {
+    suspend fun initialize() {
+        val now = timeProvider.nowEpochMillis()
+        database.accountDao().insertIfAbsent(DefaultSeedData.defaultAccounts(now))
+        database.categoryDao().insertIfAbsent(DefaultSeedData.defaultCategories(now))
+    }
+}
+
+The seed logic intentionally uses INSERT IGNORE by stable ID instead of `if (count == 0)`. This makes initialization safe to repeat and recover from a partially completed previous run.
+
+================================================================================
+11. REPOSITORY CONTRACTS
+================================================================================
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/domain/repository/AccountRepository.kt
+
+package com.premraj.moneyboard.core.domain.repository
+
+import com.premraj.moneyboard.core.domain.model.Account
+import com.premraj.moneyboard.core.domain.model.AccountType
+import com.premraj.moneyboard.core.domain.model.Money
+import kotlinx.coroutines.flow.Flow
+
+data class CreateAccountCommand(
+    val name: String,
+    val type: AccountType,
+    val openingBalance: Money,
+    val includeInNetWorth: Boolean = true
+) {
+    init {
+        require(name.isNotBlank()) { "Account name cannot be blank" }
+        require(name.length <= 60) { "Account name cannot exceed 60 characters" }
+    }
+}
+
+interface AccountRepository {
+    fun observeActiveAccounts(): Flow<List<Account>>
+    suspend fun getAccount(accountId: String): Account?
+    suspend fun createAccount(command: CreateAccountCommand): Account
+    suspend fun archiveAccount(accountId: String)
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/domain/repository/CategoryRepository.kt
+
+package com.premraj.moneyboard.core.domain.repository
+
+import com.premraj.moneyboard.core.domain.model.Category
+import com.premraj.moneyboard.core.domain.model.CategoryGroup
+import com.premraj.moneyboard.core.domain.model.CategoryType
+import kotlinx.coroutines.flow.Flow
+
+data class CreateCategoryCommand(
+    val name: String,
+    val iconKey: String,
+    val type: CategoryType,
+    val group: CategoryGroup,
+    val sortOrder: Int = 10_000
+) {
+    init {
+        require(name.isNotBlank()) { "Category name cannot be blank" }
+        require(name.length <= 60) { "Category name cannot exceed 60 characters" }
+        require(iconKey.isNotBlank()) { "iconKey cannot be blank" }
+    }
+}
+
+interface CategoryRepository {
+    fun observeActiveCategories(): Flow<List<Category>>
+    fun observeActiveCategories(type: CategoryType): Flow<List<Category>>
+    suspend fun getCategory(categoryId: String): Category?
+    suspend fun createCategory(command: CreateCategoryCommand): Category
+    suspend fun archiveCustomCategory(categoryId: String)
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/domain/repository/TransactionRepository.kt
+
+package com.premraj.moneyboard.core.domain.repository
+
+import com.premraj.moneyboard.core.database.projection.CategoryTotalRow
+import com.premraj.moneyboard.core.domain.model.FinanceTransaction
+import com.premraj.moneyboard.core.domain.model.Money
+import com.premraj.moneyboard.core.domain.model.TransactionType
+import kotlinx.coroutines.flow.Flow
+import java.time.Instant
+import java.time.LocalDate
+import java.time.YearMonth
+
+data class CreateTransactionCommand(
+    val accountId: String,
+    val categoryId: String,
+    val type: TransactionType,
+    val amount: Money,
+    val accountingDate: LocalDate,
+    val occurredAt: Instant,
+    val note: String? = null,
+    val merchant: String? = null
+) {
+    init {
+        require(accountId.isNotBlank())
+        require(categoryId.isNotBlank())
+        require(amount.amountMinor > 0L) { "Transaction amount must be greater than zero" }
+        require(note == null || note.length <= FinanceTransaction.MAX_NOTE_LENGTH)
+        require(merchant == null || merchant.length <= FinanceTransaction.MAX_MERCHANT_LENGTH)
+    }
+}
+
+interface TransactionRepository {
+    fun observeTransactions(month: YearMonth): Flow<List<FinanceTransaction>>
+    fun observeTotal(month: YearMonth, type: TransactionType, currencyCode: String): Flow<Money>
+    fun observeCategoryTotals(month: YearMonth, type: TransactionType, currencyCode: String): Flow<List<CategoryTotalRow>>
+    suspend fun getTransaction(transactionId: String): FinanceTransaction?
+    suspend fun createTransaction(command: CreateTransactionCommand): FinanceTransaction
+    suspend fun updateTransaction(transaction: FinanceTransaction): FinanceTransaction
+    suspend fun softDeleteTransaction(transactionId: String)
+}
+
+================================================================================
+12. MAPPERS
+================================================================================
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/data/mapper/AccountMapper.kt
+
+package com.premraj.moneyboard.core.data.mapper
+
+import com.premraj.moneyboard.core.database.entity.AccountEntity
+import com.premraj.moneyboard.core.domain.model.Account
+import com.premraj.moneyboard.core.domain.model.AccountType
+import com.premraj.moneyboard.core.domain.model.Money
+
+fun AccountEntity.toDomain() = Account(
+    id = id,
+    name = name,
+    type = AccountType.fromStorage(type),
+    openingBalance = Money(openingBalanceMinor, currencyCode),
+    includeInNetWorth = includeInNetWorth,
+    archived = archived,
+    createdAtEpochMillis = createdAtEpochMillis,
+    updatedAtEpochMillis = updatedAtEpochMillis
+)
+
+fun Account.toEntity() = AccountEntity(
+    id = id,
+    name = name,
+    type = type.storageValue,
+    openingBalanceMinor = openingBalance.amountMinor,
+    currencyCode = openingBalance.currencyCode,
+    includeInNetWorth = includeInNetWorth,
+    archived = archived,
+    createdAtEpochMillis = createdAtEpochMillis,
+    updatedAtEpochMillis = updatedAtEpochMillis
+)
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/data/mapper/CategoryMapper.kt
+
+package com.premraj.moneyboard.core.data.mapper
+
+import com.premraj.moneyboard.core.database.entity.CategoryEntity
+import com.premraj.moneyboard.core.domain.model.Category
+import com.premraj.moneyboard.core.domain.model.CategoryGroup
+import com.premraj.moneyboard.core.domain.model.CategoryType
+
+fun CategoryEntity.toDomain() = Category(
+    id = id,
+    name = name,
+    iconKey = iconKey,
+    type = CategoryType.fromStorage(type),
+    group = CategoryGroup.fromStorage(groupKey),
+    sortOrder = sortOrder,
+    systemCategory = systemCategory,
+    archived = archived,
+    createdAtEpochMillis = createdAtEpochMillis,
+    updatedAtEpochMillis = updatedAtEpochMillis
+)
+
+fun Category.toEntity() = CategoryEntity(
+    id = id,
+    name = name,
+    iconKey = iconKey,
+    type = type.storageValue,
+    groupKey = group.storageValue,
+    sortOrder = sortOrder,
+    systemCategory = systemCategory,
+    archived = archived,
+    createdAtEpochMillis = createdAtEpochMillis,
+    updatedAtEpochMillis = updatedAtEpochMillis
+)
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/data/mapper/TransactionMapper.kt
+
+package com.premraj.moneyboard.core.data.mapper
+
+import com.premraj.moneyboard.core.database.entity.TransactionEntity
+import com.premraj.moneyboard.core.domain.model.FinanceTransaction
+import com.premraj.moneyboard.core.domain.model.Money
+import com.premraj.moneyboard.core.domain.model.TransactionType
+import java.time.Instant
+import java.time.LocalDate
+
+fun TransactionEntity.toDomain() = FinanceTransaction(
+    id = id,
+    accountId = accountId,
+    categoryId = categoryId,
+    type = TransactionType.fromStorage(type),
+    amount = Money(amountMinor, currencyCode),
+    accountingDate = LocalDate.ofEpochDay(localDateEpochDay),
+    occurredAt = Instant.ofEpochMilli(occurredAtEpochMillis),
+    note = note,
+    merchant = merchant,
+    createdAtEpochMillis = createdAtEpochMillis,
+    updatedAtEpochMillis = updatedAtEpochMillis,
+    deletedAtEpochMillis = deletedAtEpochMillis
+)
+
+fun FinanceTransaction.toEntity() = TransactionEntity(
+    id = id,
+    accountId = accountId,
+    categoryId = categoryId,
+    type = type.storageValue,
+    amountMinor = amount.amountMinor,
+    currencyCode = amount.currencyCode,
+    localDateEpochDay = accountingDate.toEpochDay(),
+    occurredAtEpochMillis = occurredAt.toEpochMilli(),
+    note = note,
+    merchant = merchant,
+    createdAtEpochMillis = createdAtEpochMillis,
+    updatedAtEpochMillis = updatedAtEpochMillis,
+    deletedAtEpochMillis = deletedAtEpochMillis
+)
+
+================================================================================
+13. ROOM REPOSITORIES
+================================================================================
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/data/repository/RoomAccountRepository.kt
+
+package com.premraj.moneyboard.core.data.repository
+
+import com.premraj.moneyboard.core.common.IdProvider
+import com.premraj.moneyboard.core.common.TimeProvider
+import com.premraj.moneyboard.core.data.mapper.toDomain
+import com.premraj.moneyboard.core.database.dao.AccountDao
+import com.premraj.moneyboard.core.database.entity.AccountEntity
+import com.premraj.moneyboard.core.domain.model.Account
+import com.premraj.moneyboard.core.domain.repository.AccountRepository
+import com.premraj.moneyboard.core.domain.repository.CreateAccountCommand
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+class RoomAccountRepository(
+    private val dao: AccountDao,
+    private val idProvider: IdProvider,
+    private val timeProvider: TimeProvider
+) : AccountRepository {
+    override fun observeActiveAccounts(): Flow<List<Account>> =
+        dao.observeActive().map { list -> list.map { it.toDomain() } }
+
+    override suspend fun getAccount(accountId: String): Account? =
+        dao.getById(accountId)?.toDomain()
+
+    override suspend fun createAccount(command: CreateAccountCommand): Account {
+        val now = timeProvider.nowEpochMillis()
+        val entity = AccountEntity(
+            id = idProvider.newId(),
+            name = command.name.trim(),
+            type = command.type.storageValue,
+            openingBalanceMinor = command.openingBalance.amountMinor,
+            currencyCode = command.openingBalance.currencyCode,
+            includeInNetWorth = command.includeInNetWorth,
+            archived = false,
+            createdAtEpochMillis = now,
+            updatedAtEpochMillis = now
+        )
+        dao.insert(entity)
+        return entity.toDomain()
+    }
+
+    override suspend fun archiveAccount(accountId: String) {
+        require(dao.archive(accountId, timeProvider.nowEpochMillis()) == 1) {
+            "Account does not exist or could not be archived: $accountId"
+        }
+    }
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/data/repository/RoomCategoryRepository.kt
+
+package com.premraj.moneyboard.core.data.repository
+
+import com.premraj.moneyboard.core.common.IdProvider
+import com.premraj.moneyboard.core.common.TimeProvider
+import com.premraj.moneyboard.core.data.mapper.toDomain
+import com.premraj.moneyboard.core.database.dao.CategoryDao
+import com.premraj.moneyboard.core.database.entity.CategoryEntity
+import com.premraj.moneyboard.core.domain.model.Category
+import com.premraj.moneyboard.core.domain.model.CategoryType
+import com.premraj.moneyboard.core.domain.repository.CategoryRepository
+import com.premraj.moneyboard.core.domain.repository.CreateCategoryCommand
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+class RoomCategoryRepository(
+    private val dao: CategoryDao,
+    private val idProvider: IdProvider,
+    private val timeProvider: TimeProvider
+) : CategoryRepository {
+    override fun observeActiveCategories(): Flow<List<Category>> =
+        dao.observeActive().map { list -> list.map { it.toDomain() } }
+
+    override fun observeActiveCategories(type: CategoryType): Flow<List<Category>> =
+        dao.observeActiveByType(type.storageValue).map { list -> list.map { it.toDomain() } }
+
+    override suspend fun getCategory(categoryId: String): Category? =
+        dao.getById(categoryId)?.toDomain()
+
+    override suspend fun createCategory(command: CreateCategoryCommand): Category {
+        val now = timeProvider.nowEpochMillis()
+        val entity = CategoryEntity(
+            id = idProvider.newId(),
+            name = command.name.trim(),
+            iconKey = command.iconKey.trim(),
+            type = command.type.storageValue,
+            groupKey = command.group.storageValue,
+            sortOrder = command.sortOrder,
+            systemCategory = false,
+            archived = false,
+            createdAtEpochMillis = now,
+            updatedAtEpochMillis = now
+        )
+        dao.insert(entity)
+        return entity.toDomain()
+    }
+
+    override suspend fun archiveCustomCategory(categoryId: String) {
+        require(dao.archiveCustomCategory(categoryId, timeProvider.nowEpochMillis()) == 1) {
+            "Category is missing, already archived, or is a protected system category"
+        }
+    }
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/core/data/repository/RoomTransactionRepository.kt
+
+package com.premraj.moneyboard.core.data.repository
+
+import com.premraj.moneyboard.core.common.IdProvider
+import com.premraj.moneyboard.core.common.TimeProvider
+import com.premraj.moneyboard.core.data.mapper.toDomain
+import com.premraj.moneyboard.core.data.mapper.toEntity
+import com.premraj.moneyboard.core.database.dao.AccountDao
+import com.premraj.moneyboard.core.database.dao.CategoryDao
+import com.premraj.moneyboard.core.database.dao.TransactionDao
+import com.premraj.moneyboard.core.database.entity.TransactionEntity
+import com.premraj.moneyboard.core.database.projection.CategoryTotalRow
+import com.premraj.moneyboard.core.domain.model.CategoryType
+import com.premraj.moneyboard.core.domain.model.FinanceTransaction
+import com.premraj.moneyboard.core.domain.model.Money
+import com.premraj.moneyboard.core.domain.model.TransactionType
+import com.premraj.moneyboard.core.domain.repository.CreateTransactionCommand
+import com.premraj.moneyboard.core.domain.repository.TransactionRepository
+import com.premraj.moneyboard.core.domain.util.toEpochDayRange
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import java.time.YearMonth
+
+class RoomTransactionRepository(
+    private val transactionDao: TransactionDao,
+    private val accountDao: AccountDao,
+    private val categoryDao: CategoryDao,
+    private val idProvider: IdProvider,
+    private val timeProvider: TimeProvider
+) : TransactionRepository {
+
+    override fun observeTransactions(month: YearMonth): Flow<List<FinanceTransaction>> {
+        val r = month.toEpochDayRange()
+        return transactionDao.observeActiveBetween(r.startInclusive, r.endInclusive)
+            .map { rows -> rows.map { it.toDomain() } }
+    }
+
+    override fun observeTotal(
+        month: YearMonth,
+        type: TransactionType,
+        currencyCode: String
+    ): Flow<Money> {
+        val r = month.toEpochDayRange()
+        return transactionDao.observeTotalForTypeBetween(
+            r.startInclusive,
+            r.endInclusive,
+            type.storageValue,
+            currencyCode
+        ).map { Money(it, currencyCode) }
+    }
+
+    override fun observeCategoryTotals(
+        month: YearMonth,
+        type: TransactionType,
+        currencyCode: String
+    ): Flow<List<CategoryTotalRow>> {
+        val r = month.toEpochDayRange()
+        return transactionDao.observeCategoryTotalsBetween(
+            r.startInclusive,
+            r.endInclusive,
+            type.storageValue,
+            currencyCode
+        )
+    }
+
+    override suspend fun getTransaction(transactionId: String): FinanceTransaction? =
+        transactionDao.getActiveById(transactionId)?.toDomain()
+
+    override suspend fun createTransaction(command: CreateTransactionCommand): FinanceTransaction {
+        validateReferences(
+            accountId = command.accountId,
+            categoryId = command.categoryId,
+            transactionType = command.type,
+            currencyCode = command.amount.currencyCode
+        )
+        val now = timeProvider.nowEpochMillis()
+        val entity = TransactionEntity(
+            id = idProvider.newId(),
+            accountId = command.accountId,
+            categoryId = command.categoryId,
+            type = command.type.storageValue,
+            amountMinor = command.amount.amountMinor,
+            currencyCode = command.amount.currencyCode,
+            localDateEpochDay = command.accountingDate.toEpochDay(),
+            occurredAtEpochMillis = command.occurredAt.toEpochMilli(),
+            note = command.note?.trim()?.takeIf { it.isNotEmpty() },
+            merchant = command.merchant?.trim()?.takeIf { it.isNotEmpty() },
+            createdAtEpochMillis = now,
+            updatedAtEpochMillis = now,
+            deletedAtEpochMillis = null
+        )
+        transactionDao.insert(entity)
+        return entity.toDomain()
+    }
+
+    override suspend fun updateTransaction(transaction: FinanceTransaction): FinanceTransaction {
+        require(transaction.deletedAtEpochMillis == null) { "Deleted transactions cannot be edited" }
+        validateReferences(
+            transaction.accountId,
+            transaction.categoryId,
+            transaction.type,
+            transaction.amount.currencyCode
+        )
+        val existing = transactionDao.getActiveById(transaction.id)
+            ?: error("Transaction does not exist: ${transaction.id}")
+        val updated = transaction.copy(
+            createdAtEpochMillis = existing.createdAtEpochMillis,
+            updatedAtEpochMillis = timeProvider.nowEpochMillis(),
+            deletedAtEpochMillis = null
+        )
+        transactionDao.update(updated.toEntity())
+        return updated
+    }
+
+    override suspend fun softDeleteTransaction(transactionId: String) {
+        require(transactionDao.softDelete(transactionId, timeProvider.nowEpochMillis()) == 1) {
+            "Transaction does not exist or is already deleted: $transactionId"
+        }
+    }
+
+    private suspend fun validateReferences(
+        accountId: String,
+        categoryId: String,
+        transactionType: TransactionType,
+        currencyCode: String
+    ) {
+        val account = accountDao.getById(accountId)
+            ?: error("Account does not exist: $accountId")
+        require(!account.archived) { "Cannot use an archived account" }
+        require(account.currencyCode == currencyCode) {
+            "Transaction currency $currencyCode does not match account currency ${account.currencyCode}"
+        }
+
+        val category = categoryDao.getById(categoryId)
+            ?: error("Category does not exist: $categoryId")
+        require(!category.archived) { "Cannot use an archived category" }
+        val categoryType = CategoryType.fromStorage(category.type)
+        require(categoryType.accepts(transactionType)) {
+            "Category ${category.name} cannot be used for ${transactionType.storageValue}"
+        }
+    }
+}
+
+================================================================================
+14. APP CONTAINER + APPLICATION
+================================================================================
+
+PATH: app/src/main/java/com/premraj/moneyboard/di/AppContainer.kt
+
+package com.premraj.moneyboard.di
+
+import android.content.Context
+import com.premraj.moneyboard.core.common.SystemTimeProvider
+import com.premraj.moneyboard.core.common.UuidIdProvider
+import com.premraj.moneyboard.core.data.repository.RoomAccountRepository
+import com.premraj.moneyboard.core.data.repository.RoomCategoryRepository
+import com.premraj.moneyboard.core.data.repository.RoomTransactionRepository
+import com.premraj.moneyboard.core.database.DatabaseInitializer
+import com.premraj.moneyboard.core.database.MoneyBoardDatabase
+import com.premraj.moneyboard.core.database.MoneyBoardDatabaseFactory
+import com.premraj.moneyboard.core.domain.repository.AccountRepository
+import com.premraj.moneyboard.core.domain.repository.CategoryRepository
+import com.premraj.moneyboard.core.domain.repository.TransactionRepository
+
+class AppContainer(context: Context) {
+    val database: MoneyBoardDatabase = MoneyBoardDatabaseFactory.create(context)
+
+    val accountRepository: AccountRepository = RoomAccountRepository(
+        dao = database.accountDao(),
+        idProvider = UuidIdProvider,
+        timeProvider = SystemTimeProvider
+    )
+
+    val categoryRepository: CategoryRepository = RoomCategoryRepository(
+        dao = database.categoryDao(),
+        idProvider = UuidIdProvider,
+        timeProvider = SystemTimeProvider
+    )
+
+    val transactionRepository: TransactionRepository = RoomTransactionRepository(
+        transactionDao = database.transactionDao(),
+        accountDao = database.accountDao(),
+        categoryDao = database.categoryDao(),
+        idProvider = UuidIdProvider,
+        timeProvider = SystemTimeProvider
+    )
+
+    val databaseInitializer = DatabaseInitializer(
+        database = database,
+        timeProvider = SystemTimeProvider
+    )
+}
+
+PATH: app/src/main/java/com/premraj/moneyboard/MoneyBoardApplication.kt
+
+package com.premraj.moneyboard
+
+import android.app.Application
+import com.premraj.moneyboard.di.AppContainer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+
+class MoneyBoardApplication : Application() {
+    lateinit var appContainer: AppContainer
+        private set
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    override fun onCreate() {
+        super.onCreate()
+        appContainer = AppContainer(this)
+        applicationScope.launch {
+            appContainer.databaseInitializer.initialize()
+        }
+    }
+}
+
+WHY NO HILT YET
+---------------
+The explicit process-level container is deliberate. It is transparent and testable. Introduce Hilt later when ViewModels, WorkManager, widgets, billing, background services, or multiple feature modules make manual wiring materially costly.
+
+================================================================================
+15. UPDATE MANIFEST
+PATH: app/src/main/AndroidManifest.xml
+================================================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:name=".MoneyBoardApplication"
+        android:allowBackup="false"
+        android:label="MoneyBoard"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MoneyBoard">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="unspecified">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+
+================================================================================
+16. UNIT TESTS
+================================================================================
+
+PATH: app/src/test/java/com/premraj/moneyboard/core/domain/MoneyTest.kt
+
+package com.premraj.moneyboard.core.domain
+
+import com.premraj.moneyboard.core.domain.model.Money
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
+import org.junit.Test
+import java.math.BigDecimal
+
+class MoneyTest {
+    @Test
+    fun plus_sameCurrency_addsExactly() {
+        val result = Money(10_001L, "INR") + Money(20_002L, "INR")
+        assertEquals(30_003L, result.amountMinor)
+        assertEquals("INR", result.currencyCode)
+    }
+
+    @Test
+    fun minus_canProduceNegativeBalance() {
+        val result = Money(10_000L, "INR") - Money(12_500L, "INR")
+        assertEquals(-2_500L, result.amountMinor)
+    }
+
+    @Test
+    fun plus_differentCurrency_rejected() {
+        assertThrows(IllegalArgumentException::class.java) {
+            Money(100L, "INR") + Money(100L, "USD")
+        }
+    }
+
+    @Test
+    fun fromMajor_inrConvertsToPaiseExactly() {
+        val money = Money.fromMajor(BigDecimal("70000.25"), "INR")
+        assertEquals(7_000_025L, money.amountMinor)
+    }
+
+    @Test
+    fun unsupportedSubPaisePrecision_isRejected() {
+        assertThrows(ArithmeticException::class.java) {
+            Money.fromMajor(BigDecimal("10.001"), "INR")
+        }
+    }
+
+    @Test
+    fun lowercaseCurrencyCode_isRejected() {
+        assertThrows(IllegalArgumentException::class.java) {
+            Money(100L, "inr")
+        }
+    }
+}
+
+PATH: app/src/test/java/com/premraj/moneyboard/core/domain/DateRangesTest.kt
+
+package com.premraj.moneyboard.core.domain
+
+import com.premraj.moneyboard.core.domain.util.toEpochDayRange
+import org.junit.Assert.assertEquals
+import org.junit.Test
+import java.time.LocalDate
+import java.time.YearMonth
+
+class DateRangesTest {
+    @Test
+    fun leapFebruary_has29Days() {
+        val range = YearMonth.of(2028, 2).toEpochDayRange()
+        assertEquals(LocalDate.of(2028, 2, 1).toEpochDay(), range.startInclusive)
+        assertEquals(LocalDate.of(2028, 2, 29).toEpochDay(), range.endInclusive)
+    }
+
+    @Test
+    fun september2026_isCorrect() {
+        val range = YearMonth.of(2026, 9).toEpochDayRange()
+        assertEquals(LocalDate.of(2026, 9, 1).toEpochDay(), range.startInclusive)
+        assertEquals(LocalDate.of(2026, 9, 30).toEpochDay(), range.endInclusive)
+    }
+}
+
+PATH: app/src/test/java/com/premraj/moneyboard/core/domain/DomainStorageEnumTest.kt
+
+package com.premraj.moneyboard.core.domain
+
+import com.premraj.moneyboard.core.domain.model.AccountType
+import com.premraj.moneyboard.core.domain.model.CategoryGroup
+import com.premraj.moneyboard.core.domain.model.CategoryType
+import com.premraj.moneyboard.core.domain.model.TransactionType
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
+import org.junit.Test
+
+class DomainStorageEnumTest {
+    @Test fun accountTypes_roundTrip() = AccountType.entries.forEach {
+        assertEquals(it, AccountType.fromStorage(it.storageValue))
+    }
+
+    @Test fun categoryTypes_roundTrip() = CategoryType.entries.forEach {
+        assertEquals(it, CategoryType.fromStorage(it.storageValue))
+    }
+
+    @Test fun groups_roundTrip() = CategoryGroup.entries.forEach {
+        assertEquals(it, CategoryGroup.fromStorage(it.storageValue))
+    }
+
+    @Test fun transactionTypes_roundTrip() = TransactionType.entries.forEach {
+        assertEquals(it, TransactionType.fromStorage(it.storageValue))
+    }
+
+    @Test fun unknownValue_failsFast() {
+        assertThrows(IllegalStateException::class.java) {
+            TransactionType.fromStorage("UNKNOWN")
+        }
+    }
+}
+
+================================================================================
+17. SUSPEND TEST ASSERTION HELPER
+PATH: app/src/androidTest/java/com/premraj/moneyboard/testing/SuspendAssertions.kt
+================================================================================
+
+package com.premraj.moneyboard.testing
+
+suspend inline fun <reified T : Throwable> assertSuspendThrows(
+    crossinline block: suspend () -> Unit
+) {
+    var thrown: Throwable? = null
+    try {
+        block()
+    } catch (error: Throwable) {
+        thrown = error
+    }
+    if (thrown !is T) {
+        throw AssertionError(
+            "Expected ${T::class.java.name}, got ${thrown?.javaClass?.name ?: "no exception"}",
+            thrown
+        )
+    }
+}
+
+================================================================================
+18. DATABASE INSTRUMENTATION TEST
+PATH: app/src/androidTest/java/com/premraj/moneyboard/core/database/MoneyBoardDatabaseTest.kt
+================================================================================
+
+package com.premraj.moneyboard.core.database
+
+import android.content.Context
+import androidx.room3.Room
+import androidx.sqlite.driver.AndroidSQLiteDriver
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.premraj.moneyboard.core.database.entity.AccountEntity
+import com.premraj.moneyboard.core.database.entity.CategoryEntity
+import com.premraj.moneyboard.core.database.entity.TransactionEntity
+import com.premraj.moneyboard.core.domain.model.AccountType
+import com.premraj.moneyboard.core.domain.model.CategoryGroup
+import com.premraj.moneyboard.core.domain.model.CategoryType
+import com.premraj.moneyboard.core.domain.model.TransactionType
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.time.LocalDate
+
+@RunWith(AndroidJUnit4::class)
+class MoneyBoardDatabaseTest {
+    private lateinit var db: MoneyBoardDatabase
+
+    @Before
+    fun setUp() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        db = Room.inMemoryDatabaseBuilder<MoneyBoardDatabase>(context)
+            .setDriver(AndroidSQLiteDriver())
+            .build()
+    }
+
+    @After
+    fun tearDown() {
+        db.close()
+    }
+
+    @Test
+    fun insertReadAndAggregate_areCorrect() = runTest {
+        db.accountDao().insert(testAccount())
+        db.categoryDao().insert(testCategory())
+        val date = LocalDate.of(2026, 9, 15)
+        db.transactionDao().insert(
+            TransactionEntity(
+                id = "tx-1",
+                accountId = "account-test",
+                categoryId = "category-test",
+                type = TransactionType.EXPENSE.storageValue,
+                amountMinor = 12_345L,
+                currencyCode = "INR",
+                localDateEpochDay = date.toEpochDay(),
+                occurredAtEpochMillis = 1_757_900_000_000L,
+                note = "Test expense",
+                merchant = null,
+                createdAtEpochMillis = 1_757_900_000_000L,
+                updatedAtEpochMillis = 1_757_900_000_000L,
+                deletedAtEpochMillis = null
+            )
+        )
+
+        val rows = db.transactionDao().observeActiveBetween(
+            LocalDate.of(2026, 9, 1).toEpochDay(),
+            LocalDate.of(2026, 9, 30).toEpochDay()
+        ).first()
+        assertEquals(1, rows.size)
+        assertEquals(12_345L, rows.single().amountMinor)
+
+        val total = db.transactionDao().observeTotalForTypeBetween(
+            LocalDate.of(2026, 9, 1).toEpochDay(),
+            LocalDate.of(2026, 9, 30).toEpochDay(),
+            TransactionType.EXPENSE.storageValue,
+            "INR"
+        ).first()
+        assertEquals(12_345L, total)
+    }
+
+    @Test
+    fun softDelete_excludesNormalReads() = runTest {
+        db.accountDao().insert(testAccount())
+        db.categoryDao().insert(testCategory())
+        val date = LocalDate.of(2026, 9, 15)
+        db.transactionDao().insert(
+            TransactionEntity(
+                id = "tx-delete",
+                accountId = "account-test",
+                categoryId = "category-test",
+                type = TransactionType.EXPENSE.storageValue,
+                amountMinor = 500L,
+                currencyCode = "INR",
+                localDateEpochDay = date.toEpochDay(),
+                occurredAtEpochMillis = 1000L,
+                note = null,
+                merchant = null,
+                createdAtEpochMillis = 1000L,
+                updatedAtEpochMillis = 1000L,
+                deletedAtEpochMillis = null
+            )
+        )
+        db.transactionDao().softDelete("tx-delete", 2000L)
+        assertNull(db.transactionDao().getActiveById("tx-delete"))
+        assertEquals(0L, db.transactionDao().countActive())
+    }
+
+    private fun testAccount() = AccountEntity(
+        id = "account-test",
+        name = "Test Account",
+        type = AccountType.BANK.storageValue,
+        openingBalanceMinor = 0L,
+        currencyCode = "INR",
+        includeInNetWorth = true,
+        archived = false,
+        createdAtEpochMillis = 1L,
+        updatedAtEpochMillis = 1L
+    )
+
+    private fun testCategory() = CategoryEntity(
+        id = "category-test",
+        name = "Test Expense",
+        iconKey = "test",
+        type = CategoryType.EXPENSE.storageValue,
+        groupKey = CategoryGroup.OTHER.storageValue,
+        sortOrder = 1,
+        systemCategory = false,
+        archived = false,
+        createdAtEpochMillis = 1L,
+        updatedAtEpochMillis = 1L
+    )
+}
+
+================================================================================
+19. INITIALIZER TEST
+PATH: app/src/androidTest/java/com/premraj/moneyboard/core/database/DatabaseInitializerTest.kt
+================================================================================
+
+package com.premraj.moneyboard.core.database
+
+import android.content.Context
+import androidx.room3.Room
+import androidx.sqlite.driver.AndroidSQLiteDriver
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.premraj.moneyboard.core.common.TimeProvider
+import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class DatabaseInitializerTest {
+    private lateinit var db: MoneyBoardDatabase
+
+    @Before
+    fun setUp() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        db = Room.inMemoryDatabaseBuilder<MoneyBoardDatabase>(context)
+            .setDriver(AndroidSQLiteDriver())
+            .build()
+    }
+
+    @After
+    fun tearDown() {
+        db.close()
+    }
+
+    @Test
+    fun initialize_isIdempotent() = runTest {
+        val initializer = DatabaseInitializer(db, TimeProvider { 123456L })
+        initializer.initialize()
+        val firstAccounts = db.accountDao().countAll()
+        val firstCategories = db.categoryDao().countAll()
+        initializer.initialize()
+        assertEquals(firstAccounts, db.accountDao().countAll())
+        assertEquals(firstCategories, db.categoryDao().countAll())
+        assertEquals(1L, firstAccounts)
+        assertTrue(firstCategories >= 30L)
+    }
+}
+
+================================================================================
+20. REPOSITORY INTEGRATION TEST
+PATH: app/src/androidTest/java/com/premraj/moneyboard/data/repository/RoomTransactionRepositoryTest.kt
+================================================================================
+
+package com.premraj.moneyboard.data.repository
+
+import android.content.Context
+import androidx.room3.Room
+import androidx.sqlite.driver.AndroidSQLiteDriver
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.premraj.moneyboard.core.common.IdProvider
+import com.premraj.moneyboard.core.common.TimeProvider
+import com.premraj.moneyboard.core.data.repository.RoomTransactionRepository
+import com.premraj.moneyboard.core.database.DatabaseInitializer
+import com.premraj.moneyboard.core.database.MoneyBoardDatabase
+import com.premraj.moneyboard.core.database.SeedIds
+import com.premraj.moneyboard.core.domain.model.Money
+import com.premraj.moneyboard.core.domain.model.TransactionType
+import com.premraj.moneyboard.core.domain.repository.CreateTransactionCommand
+import com.premraj.moneyboard.testing.assertSuspendThrows
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.time.Instant
+import java.time.LocalDate
+import java.time.YearMonth
+
+@RunWith(AndroidJUnit4::class)
+class RoomTransactionRepositoryTest {
+    private lateinit var db: MoneyBoardDatabase
+    private lateinit var repository: RoomTransactionRepository
+    private var idCounter = 0
+    private val now = 1_757_900_000_000L
+
+    @Before
+    fun setUp() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        db = Room.inMemoryDatabaseBuilder<MoneyBoardDatabase>(context)
+            .setDriver(AndroidSQLiteDriver())
+            .build()
+        DatabaseInitializer(db, TimeProvider { now }).initialize()
+        repository = RoomTransactionRepository(
+            transactionDao = db.transactionDao(),
+            accountDao = db.accountDao(),
+            categoryDao = db.categoryDao(),
+            idProvider = IdProvider { idCounter += 1; "generated-$idCounter" },
+            timeProvider = TimeProvider { now }
+        )
+    }
+
+    @After
+    fun tearDown() {
+        db.close()
+    }
+
+    @Test
+    fun createExpense_persistsInCorrectMonth() = runTest {
+        val created = repository.createTransaction(
+            CreateTransactionCommand(
+                accountId = SeedIds.CASH_ACCOUNT,
+                categoryId = SeedIds.EXPENSE_RENT,
+                type = TransactionType.EXPENSE,
+                amount = Money(1_000_000L, "INR"),
+                accountingDate = LocalDate.of(2026, 9, 15),
+                occurredAt = Instant.ofEpochMilli(now),
+                note = "September rent"
+            )
+        )
+        assertEquals("generated-1", created.id)
+        val rows = repository.observeTransactions(YearMonth.of(2026, 9)).first()
+        assertEquals(1, rows.size)
+        assertEquals(1_000_000L, rows.single().amount.amountMinor)
+    }
+
+    @Test
+    fun wrongCategoryType_isRejected() = runTest {
+        assertSuspendThrows<IllegalArgumentException> {
+            repository.createTransaction(
+                CreateTransactionCommand(
+                    accountId = SeedIds.CASH_ACCOUNT,
+                    categoryId = SeedIds.INCOME_SALARY,
+                    type = TransactionType.EXPENSE,
+                    amount = Money(50_000L, "INR"),
+                    accountingDate = LocalDate.of(2026, 9, 15),
+                    occurredAt = Instant.ofEpochMilli(now)
+                )
+            )
+        }
+    }
+
+    @Test
+    fun accountCurrencyMismatch_isRejected() = runTest {
+        assertSuspendThrows<IllegalArgumentException> {
+            repository.createTransaction(
+                CreateTransactionCommand(
+                    accountId = SeedIds.CASH_ACCOUNT,
+                    categoryId = SeedIds.EXPENSE_RENT,
+                    type = TransactionType.EXPENSE,
+                    amount = Money(10_000L, "USD"),
+                    accountingDate = LocalDate.of(2026, 9, 15),
+                    occurredAt = Instant.ofEpochMilli(now)
+                )
+            )
+        }
+    }
+
+    @Test
+    fun softDelete_removesFromNormalReads() = runTest {
+        val created = repository.createTransaction(
+            CreateTransactionCommand(
+                accountId = SeedIds.CASH_ACCOUNT,
+                categoryId = SeedIds.EXPENSE_GROCERIES,
+                type = TransactionType.EXPENSE,
+                amount = Money(75_000L, "INR"),
+                accountingDate = LocalDate.of(2026, 9, 14),
+                occurredAt = Instant.ofEpochMilli(now)
+            )
+        )
+        repository.softDeleteTransaction(created.id)
+        assertNull(repository.getTransaction(created.id))
+        assertEquals(0, repository.observeTransactions(YearMonth.of(2026, 9)).first().size)
+    }
+
+    @Test
+    fun monthlyTotal_excludesNextMonth() = runTest {
+        suspend fun add(date: LocalDate, amount: Long) {
+            repository.createTransaction(
+                CreateTransactionCommand(
+                    accountId = SeedIds.CASH_ACCOUNT,
+                    categoryId = SeedIds.EXPENSE_GROCERIES,
+                    type = TransactionType.EXPENSE,
+                    amount = Money(amount, "INR"),
+                    accountingDate = date,
+                    occurredAt = Instant.ofEpochMilli(now)
+                )
+            )
+        }
+
+        add(LocalDate.of(2026, 9, 1), 1_000_000L)
+        add(LocalDate.of(2026, 9, 30), 200_000L)
+        add(LocalDate.of(2026, 10, 1), 900_000L)
+
+        val total = repository.observeTotal(
+            YearMonth.of(2026, 9),
+            TransactionType.EXPENSE,
+            "INR"
+        ).first()
+        assertEquals(1_200_000L, total.amountMinor)
+    }
+}
+
+================================================================================
+21. BUILD AND TEST COMMANDS
+================================================================================
+
+From the project root on Windows PowerShell:
+
+1. Unit tests
+
+.\gradlew.bat testDebugUnitTest
+
+Expected:
+BUILD SUCCESSFUL
+
+2. Start an emulator or connect a physical device, then run instrumentation tests
+
+.\gradlew.bat connectedDebugAndroidTest
+
+Expected:
+BUILD SUCCESSFUL
+
+3. Full debug build
+
+.\gradlew.bat clean assembleDebug
+
+Expected:
+BUILD SUCCESSFUL
+
+4. Run the app.
+The visible Part 01 dashboard should still work. Part 02 deliberately does not replace its demo values yet.
+
+================================================================================
+22. ROOM SCHEMA EXPORT CHECK
+================================================================================
+
+After a successful build inspect:
+
+app/schemas/
+
+There should be a version-1 JSON schema under the generated directory for:
+
+com.premraj.moneyboard.core.database.MoneyBoardDatabase
+
+Commit the schema JSON to Git.
+
+DO NOT put app/schemas in .gitignore.
+
+WHY:
+Future migration tests require historical schemas. For a finance app, schema history is part of the data-safety contract.
+
+================================================================================
+23. DATABASE VERSION POLICY
+================================================================================
+
+Current database version:
+1
+
+After version 1 is committed/distributed, never edit the production schema without increasing the version.
+
+Future examples:
+1 -> 2
+2 -> 3
+3 -> 4
+
+Do NOT use fallbackToDestructiveMigration as a normal production strategy. MoneyBoard contains user financial records. A schema change must preserve data and must be tested.
+
+There is no 1->2 migration test in Part 02 because version 2 does not exist yet. The correct Part 02 action is to export and commit schema version 1. As soon as Part 03/another feature changes the schema, add explicit migration tests before shipping the changed schema.
+
+================================================================================
+24. DATABASE INSPECTOR QA
+================================================================================
+
+Run the application once, then in Android Studio open:
+View -> Tool Windows -> App Inspection -> Database Inspector
+
+Expected user tables:
+- accounts
+- categories
+- transactions
+
+Expected seed state:
+- one stable Cash account: account.cash
+- 30+ stable starter categories
+- transactions empty on a clean install
+
+Check column types manually:
+- openingBalanceMinor -> integer
+- amountMinor -> integer
+- currencyCode -> text
+- localDateEpochDay -> integer
+- occurredAtEpochMillis -> integer
+
+There must be no REAL/Double financial amount column.
+
+================================================================================
+25. MANUAL FRESH-INSTALL SMOKE TEST
+================================================================================
+
+1. Uninstall MoneyBoard debug app from emulator/device.
+2. Install/run the debug build.
+3. App must launch without database crash.
+4. Open Database Inspector.
+5. Confirm Cash account exists.
+6. Confirm default categories exist.
+7. Record account/category counts.
+8. Force stop the app.
+9. Launch again.
+10. Confirm counts did not increase because of duplicate seed insertion.
+11. Change system light/dark theme.
+12. Confirm Part 01 dashboard still renders.
+13. Rotate or resize emulator.
+14. Confirm no database lifecycle crash.
+
+================================================================================
+26. DATA-INTEGRITY CONTRACT ESTABLISHED BY PART 02
+================================================================================
+
+A. Every normal transaction references an existing account.
+B. Every normal transaction references an existing category.
+C. Account/category FK columns are indexed.
+D. Transaction amount is positive integer minor units.
+E. Currency is stored independently from amount.
+F. Category type must match transaction type.
+G. Transaction currency must match account currency.
+H. Soft-deleted transactions do not appear in normal reads/totals.
+I. Monthly accounting is based on localDateEpochDay.
+J. Stable seed IDs make startup initialization idempotent.
+K. System categories are protected from the custom-category archive query.
+L. Accounts/categories use archive semantics instead of destructive deletion.
+M. Stored enum values are explicit strings, never ordinals.
+N. Room schema is exported.
+O. DAO access remains behind repositories for product/business code.
+
+================================================================================
+27. WHY SAVING AND INVESTMENT ARE SEPARATE TYPES
+================================================================================
+
+The supplied reference design distinguishes actual living/family/travel spending from savings and investments. Therefore MoneyBoard cannot model all cash-out transactions as EXPENSE.
+
+The foundation uses:
+- INCOME
+- EXPENSE
+- SAVING
+- INVESTMENT
+- TRANSFER
+
+This allows later dashboard formulas such as:
+
+actualLivingSpending = expenseTotal
+savingsAndInvestments = savingTotal + investmentTotal
+totalAllocation = expenseTotal + savingTotal + investmentTotal
+remaining = incomeTotal - totalAllocation
+
+The exact dashboard engine is Part 03.
+
+================================================================================
+28. TRANSFER LIMITATION — DO NOT IGNORE
+================================================================================
+
+Part 02 reserves TRANSFER semantics but does not yet implement a complete two-sided transfer engine.
+
+A real transfer between two owned accounts must be atomic and must:
+- decrease source balance;
+- increase destination balance;
+- not count as income;
+- not count as expense;
+- avoid duplicate analytics;
+- survive edit/delete correctly.
+
+Do not ship a production internal-transfer UI until the dedicated linked-transfer implementation is added.
+
+================================================================================
+29. CREDIT CARD LIMITATION — DO NOT DOUBLE COUNT
+================================================================================
+
+AccountType.CREDIT_CARD is reserved now, but liability accounting is not complete yet.
+
+Future correct behavior:
+- credit-card purchase = spending;
+- bank -> credit-card bill payment = transfer/liability settlement;
+- the bill payment must NOT become a second expense.
+
+Do not implement card bill payment as an EXPENSE transaction.
+
+================================================================================
+30. SECURITY POSITION AT PART 02
+================================================================================
+
+The Room database is stored in Android's app-private sandbox.
+
+Part 02 DOES NOT claim:
+"MoneyBoard database is encrypted."
+
+Custom at-rest encryption, Android Keystore usage, encrypted export, biometric lock and threat-model decisions will be implemented in the security stage.
+
+Do not market a security property until the exact mechanism has been implemented and tested.
+
+================================================================================
+31. FAILURE CONDITIONS — STOP BEFORE PART 03
+================================================================================
+
+Do not proceed if any of these are true:
+
+[ ] Room compiler/KSP fails.
+[ ] Gradle sync fails.
+[ ] App crashes during first startup.
+[ ] App crashes during second startup.
+[ ] Seed records duplicate on relaunch.
+[ ] Transaction with missing account can be created through repository.
+[ ] Transaction with missing category can be created through repository.
+[ ] Salary category can be used as EXPENSE.
+[ ] USD transaction can be written to the default INR account.
+[ ] Soft-deleted record remains in active totals.
+[ ] September total includes an October 1 transaction.
+[ ] Room schema JSON is not exported.
+[ ] Any money amount column uses Float/Double.
+[ ] Unit tests fail.
+[ ] Instrumentation tests fail.
+[ ] Existing Part 01 app no longer runs.
+
+================================================================================
+32. PART 02 ACCEPTANCE CRITERIA
+================================================================================
+
+BUILD
+[ ] Gradle sync succeeds.
+[ ] testDebugUnitTest succeeds.
+[ ] connectedDebugAndroidTest succeeds.
+[ ] clean assembleDebug succeeds.
+[ ] app launches.
+
+MONEY
+[ ] Money uses Long minor units.
+[ ] no persisted financial amount uses Double/Float.
+[ ] same-currency arithmetic is exact.
+[ ] cross-currency arithmetic is rejected.
+[ ] major INR -> minor paise conversion test passes.
+[ ] calculated Money may be negative.
+[ ] transaction amount <= 0 is rejected.
+
+DATES
+[ ] TransactionEntity has localDateEpochDay.
+[ ] TransactionEntity has occurredAtEpochMillis.
+[ ] month query uses localDateEpochDay.
+[ ] leap-year test passes.
+[ ] September/October boundary integration test passes.
+
+ACCOUNTS
+[ ] accounts table exists.
+[ ] default Cash account seeds exactly once.
+[ ] account type uses stable string storage.
+[ ] account currency exists.
+[ ] account archive operation exists.
+
+CATEGORIES
+[ ] categories table exists.
+[ ] India-focused starter categories seed.
+[ ] category type/group are explicit.
+[ ] systemCategory exists.
+[ ] protected system category cannot be archived using custom-category archive DAO.
+
+TRANSACTIONS
+[ ] transactions table exists.
+[ ] account FK exists and is indexed.
+[ ] category FK exists and is indexed.
+[ ] accounting-date/type query index exists.
+[ ] soft delete exists.
+[ ] normal reads exclude deleted rows.
+[ ] category/type validation exists.
+[ ] account/currency validation exists.
+[ ] monthly total query exists.
+[ ] category total query exists.
+
+ARCHITECTURE
+[ ] UI is not querying DAOs.
+[ ] repository contracts live in domain package.
+[ ] Room implementations live in data package.
+[ ] entity-domain mapping is explicit.
+[ ] IDs/time are injectable.
+[ ] Part 01 dashboard continues to compile unchanged.
+
+ROOM
+[ ] androidx.room3 is used.
+[ ] AndroidSQLiteDriver is configured.
+[ ] KSP generates Room implementation.
+[ ] database version is 1.
+[ ] exportSchema = true.
+[ ] schema JSON exists.
+[ ] schema JSON is committed.
+
+TESTS
+[ ] MoneyTest passes.
+[ ] DateRangesTest passes.
+[ ] DomainStorageEnumTest passes.
+[ ] MoneyBoardDatabaseTest passes.
+[ ] DatabaseInitializerTest passes.
+[ ] RoomTransactionRepositoryTest passes.
+
+================================================================================
+33. GIT COMMIT
+================================================================================
+
+After every acceptance item passes:
+
+git status
+
+Verify the Room schema file is staged, then:
+
+git add .
+git commit -m "feat: add money domain and Room database foundation"
+
+================================================================================
+34. PART 03 TARGET
+================================================================================
+
+Next recommended implementation:
+
+PART 03 — MONTHLY PLAN + DASHBOARD DOMAIN ENGINE + REAL ROOM-BACKED DASHBOARD
+
+It should add:
+- monthly income plan;
+- monthly planned allocation/budget persistence;
+- planned vs actual separation;
+- dashboard aggregate domain model;
+- dashboard use cases;
+- salary/income total;
+- actual expense total;
+- saving total;
+- investment total;
+- total allocation;
+- remaining balance;
+- savings rate;
+- category breakdown;
+- ViewModel + StateFlow;
+- loading/empty/error state;
+- replacement of Part 01 hard-coded numbers with real Room-backed values;
+- reconciliation tests proving all dashboard cards agree with the ledger.
+
+Do NOT jump to AI assistant, bank connectivity, billing, cloud sync or PDF before the core financial board is driven by verified real data.
+
+================================================================================
+35. OFFICIAL API REFERENCES USED FOR THIS PART
+================================================================================
+
+Room:
+https://developer.android.com/training/data-storage/room
+
+Room 3 releases:
+https://developer.android.com/jetpack/androidx/releases/room3
+
+Room 2 -> Room 3 migration:
+https://developer.android.com/training/data-storage/room/migration-2-to-3
+
+Room migrations/testing:
+https://developer.android.com/training/data-storage/room/migrating-db-versions
+
+SQLite:
+https://developer.android.com/jetpack/androidx/releases/sqlite
+
+AndroidSQLiteDriver:
+https://developer.android.com/reference/androidx/sqlite/driver/AndroidSQLiteDriver
+
+AndroidX Test:
+https://developer.android.com/jetpack/androidx/releases/test
+
+Coroutine testing:
+https://developer.android.com/kotlin/coroutines/test
+
+At the time this Part was prepared (15 September 2026), official Android documentation lists Room3 3.0.3 and SQLite 2.7.1 as stable. Revalidate versions before a future dedicated dependency-upgrade commit; do not casually upgrade toolchain versions while implementing unrelated features.
+
+================================================================================
+36. FINAL DEFINITION OF DONE
+================================================================================
+
+Part 02 is complete only when all of the following are true:
+
+1. App builds and launches.
+2. Cash/default categories are created once.
+3. Money arithmetic tests pass.
+4. Date/month-boundary tests pass.
+5. Database integration tests pass.
+6. Repository validation tests pass.
+7. Soft deletion test passes.
+8. Room v1 schema is generated and committed.
+9. No persisted money uses floating point.
+10. No UI/business feature directly depends on DAO implementation.
+11. No destructive migration behavior exists.
+12. Existing Part 01 design still runs.
+
+Only then begin Part 03.
+
+END OF PART 02

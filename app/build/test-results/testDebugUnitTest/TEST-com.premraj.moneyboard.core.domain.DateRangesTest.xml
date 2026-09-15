@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.premraj.moneyboard.core.domain.DateRangesTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-09-15T19:06:47.765Z" hostname="REALBON07" time="0.011">
+  <properties/>
+  <testcase name="september2026_isCorrect" classname="com.premraj.moneyboard.core.domain.DateRangesTest" time="0.007"/>
+  <testcase name="leapFebruary_has29Days" classname="com.premraj.moneyboard.core.domain.DateRangesTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

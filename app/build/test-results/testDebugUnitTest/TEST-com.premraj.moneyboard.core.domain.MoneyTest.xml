@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.premraj.moneyboard.core.domain.MoneyTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-09-15T19:06:47.782Z" hostname="REALBON07" time="0.006">
+  <properties/>
+  <testcase name="lowercaseCurrencyCode_isRejected" classname="com.premraj.moneyboard.core.domain.MoneyTest" time="0.0"/>
+  <testcase name="fromMajor_inrConvertsToPaiseExactly" classname="com.premraj.moneyboard.core.domain.MoneyTest" time="0.003"/>
+  <testcase name="unsupportedSubPaisePrecision_isRejected" classname="com.premraj.moneyboard.core.domain.MoneyTest" time="0.0"/>
+  <testcase name="minus_canProduceNegativeBalance" classname="com.premraj.moneyboard.core.domain.MoneyTest" time="0.0"/>
+  <testcase name="plus_differentCurrency_rejected" classname="com.premraj.moneyboard.core.domain.MoneyTest" time="0.003"/>
+  <testcase name="plus_sameCurrency_addsExactly" classname="com.premraj.moneyboard.core.domain.MoneyTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

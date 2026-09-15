@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.premraj.moneyboard.core.domain.DomainStorageEnumTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-15T19:06:47.778Z" hostname="REALBON07" time="0.002">
+  <properties/>
+  <testcase name="groups_roundTrip" classname="com.premraj.moneyboard.core.domain.DomainStorageEnumTest" time="0.0"/>
+  <testcase name="transactionTypes_roundTrip" classname="com.premraj.moneyboard.core.domain.DomainStorageEnumTest" time="0.001"/>
+  <testcase name="unknownValue_failsFast" classname="com.premraj.moneyboard.core.domain.DomainStorageEnumTest" time="0.001"/>
+  <testcase name="categoryTypes_roundTrip" classname="com.premraj.moneyboard.core.domain.DomainStorageEnumTest" time="0.0"/>
+  <testcase name="accountTypes_roundTrip" classname="com.premraj.moneyboard.core.domain.DomainStorageEnumTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
