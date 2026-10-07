@@ -58,9 +58,6 @@ room3 {
     schemaDirectory("$projectDir/schemas")
 }
 
-ksp {
-    arg("room.schemaLocation", file("$projectDir/schemas").path)
-}
 
 dependencies {
     implementation(libs.androidx.core.ktx)

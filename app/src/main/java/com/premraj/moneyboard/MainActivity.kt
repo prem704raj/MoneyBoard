@@ -12,8 +12,11 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
 
+        val appContainer =
+            (application as MoneyBoardApplication).appContainer
+
         setContent {
-            MoneyBoardApp()
+            MoneyBoardApp(appContainer = appContainer)
         }
     }
 }

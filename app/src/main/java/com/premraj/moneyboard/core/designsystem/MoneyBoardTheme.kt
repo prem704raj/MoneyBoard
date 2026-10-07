@@ -57,6 +57,7 @@ fun MoneyBoardTheme(
     val view = LocalView.current
 
     if (!view.isInEditMode) {
+        @Suppress("DEPRECATION")
         SideEffect {
             val activity = view.context as? Activity ?: return@SideEffect
             val window = activity.window

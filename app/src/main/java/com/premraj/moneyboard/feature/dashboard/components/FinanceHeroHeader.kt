@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
-import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,6 +27,8 @@ import com.premraj.moneyboard.core.designsystem.MoneyBoardColors
 
 @Composable
 fun FinanceHeroHeader(
+    incomeText: String,
+    monthLabel: String,
     modifier: Modifier = Modifier
 ) {
     val gradient = Brush.horizontalGradient(
@@ -50,7 +51,7 @@ fun FinanceHeroHeader(
             )
     ) {
         Text(
-            text = "Monthly Expense Breakdown",
+            text = "MoneyBoard",
             style = MaterialTheme.typography.headlineLarge,
             color = Color.White
         )
@@ -60,7 +61,7 @@ fun FinanceHeroHeader(
         )
 
         Text(
-            text = "Single Person   |   Pune   |   No EMI",
+            text = monthLabel,
             style = MaterialTheme.typography.bodyMedium,
             color = Color.White.copy(alpha = 0.82f)
         )
@@ -69,33 +70,12 @@ fun FinanceHeroHeader(
             modifier = Modifier.height(18.dp)
         )
 
-        SalaryHeroCard()
-
-        Spacer(
-            modifier = Modifier.height(12.dp)
-        )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.LocationOn,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.88f)
-            )
-
-            Text(
-                text = "Pune",
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.White
-            )
-        }
+        SalaryHeroCard(incomeText = incomeText)
     }
 }
 
 @Composable
-private fun SalaryHeroCard() {
+private fun SalaryHeroCard(incomeText: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -130,13 +110,13 @@ private fun SalaryHeroCard() {
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text = "In-hand Salary",
+                text = "Income",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.86f)
             )
 
             Text(
-                text = "₹70,000 / month",
+                text = "$incomeText / month",
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White,
                 fontWeight = FontWeight.Bold

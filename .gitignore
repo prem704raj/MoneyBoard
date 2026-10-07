@@ -1,0 +1,28 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Local configuration
+local.properties
+
+# Android / Signing
+*.apk
+*.aab
+*.jks
+*.keystore
+captures/
+*.hprof
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
