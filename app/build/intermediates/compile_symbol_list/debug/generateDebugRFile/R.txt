@@ -1,1 +1,0 @@
-int style Theme_MoneyBoard 0x0
