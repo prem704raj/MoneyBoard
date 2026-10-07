@@ -97,8 +97,8 @@ object DashboardPreviewData {
     )
 
     val annual = listOf(
-        SummaryLineUi("Annual Allocation", "₹8,32,200"),
-        SummaryLineUi("Annual Salary", "₹8,40,000"),
-        SummaryLineUi("Annual Balance", "₹7,800")
+        SummaryLineUi("Projected Allocation", "₹8,32,200"),
+        SummaryLineUi("Projected Income", "₹8,40,000"),
+        SummaryLineUi("Projected Balance", "₹7,800")
     )
 }

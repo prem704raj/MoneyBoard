@@ -67,7 +67,7 @@ object DashboardUiMapper {
                 MoneyFormatter.formatCompact(saved, locale)
             ),
             SummaryLineUi(
-                "Actual Living / Family / Travel",
+                if (mode == DashboardMode.PLAN) "Planned Living / Family / Travel" else "Actual Living / Family / Travel",
                 MoneyFormatter.formatCompact(living, locale)
             )
         )
@@ -75,15 +75,15 @@ object DashboardUiMapper {
         val annualMetrics = metrics.annualized()
         val annualLines = listOf(
             SummaryLineUi(
-                "Annual Allocation",
+                "Projected Allocation",
                 MoneyFormatter.formatCompact(annualMetrics.totalAllocation, locale)
             ),
             SummaryLineUi(
-                "Annual Income",
+                "Projected Income",
                 MoneyFormatter.formatCompact(annualMetrics.income, locale)
             ),
             SummaryLineUi(
-                "Annual Balance",
+                "Projected Balance",
                 MoneyFormatter.formatCompact(annualMetrics.remaining, locale)
             )
         )

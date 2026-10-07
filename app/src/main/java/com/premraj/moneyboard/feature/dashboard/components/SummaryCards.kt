@@ -77,7 +77,7 @@ fun AnnualSummaryCard(
     modifier: Modifier = Modifier
 ) {
     SummaryCard(
-        title = "Annual Summary",
+        title = "12-Month Projection",
         icon = Icons.Rounded.CalendarMonth,
         iconTint = MoneyBoardColors.Orange700,
         containerColor = MoneyBoardColors.AnnualSurface,

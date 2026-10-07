@@ -4,17 +4,22 @@ MoneyBoard is a **local-first** Android personal-finance tracker built with **Ko
 
 ---
 
-## Features
+## Current Status & Feature Matrix
 
-- **Dashboard** — Plan vs Actual monthly view with month navigation
-- **Account management** — Cash, Bank, Credit Card, Wallet, Investment
-- **Income & expense categories** — 30+ system categories with grouping
-- **Transaction tracking** — Soft-delete, category validation, currency match enforcement
-- **Monthly planning** — Income targets and category budget allocation
-- **Multi-currency support** — ISO-4217 validated, integer-based money model
-- **Financial integrity** — No floating-point; all arithmetic in minor units with overflow detection
-- **Room persistence** — Typed DAOs, foreign keys, composite indices
-- **Local-first** — No cloud, no analytics, no ads. Your data stays on-device
+### Implemented & Verified
+- **Dashboard** — Plan vs Actual monthly view with month navigation and 12-month projections
+- **Domain & Persistence Core** — Integer minor-unit `Money` arithmetic with overflow protection and ISO-4217 validation
+- **Room Persistence** — Typed Room 3 DAOs, foreign key constraints, composite indices, and version 2 schema
+- **Centralized Formatting** — `MoneyFormatter` respecting currency fraction digits and locale grouping
+- **Test Suite** — 48+ unit tests covering financial invariants, arithmetic, date boundaries, and projections
+- **GitHub Actions CI** — Unit tests, Android test assembly, release lint, APK/AAB build gates
+
+### In Active Development (v0.4.0 Milestone)
+- **Transaction CRUD** — Add, edit, list, and soft-delete transactions with snackbar undo
+- **Account Management** — Account creation, balance inspection, and archiving
+- **Monthly Plan Editor** — Income and category budget authoring
+- **Database Migration Test** — Automated `MigrationTestHelper` test for Room v1 → v2
+- **Data Export** — Local export / backup for device migration
 
 ## Tech Stack
 
@@ -101,11 +106,12 @@ app/src/main/java/com/premraj/moneyboard/
 | `RoomTransactionRepositoryTest` | Instrumented   | Repository contract, month isolation  |
 
 ## CI
-
-GitHub Actions workflow at `.github/workflows/android.yml` runs on every push/PR:
+ 
+GitHub Actions workflow at `.github/workflows/android.yml` runs on every push and PR:
 1. Unit tests (`testDebugUnitTest`)
-2. Lint (`lintDebug`)
-3. Debug APK build (`assembleDebug`)
+2. Android test assembly (`assembleDebugAndroidTest`)
+3. Lint checks (`lintDebug`, `lintRelease`)
+4. Build verification (`assembleDebug`, `assembleRelease`, `bundleRelease`)
 
 ## Repository
 
