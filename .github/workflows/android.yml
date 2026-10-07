@@ -2,7 +2,7 @@ name: Android CI
 
 on:
   push:
-    branches: [ master, 'astra/**' ]
+    branches: [ master, 'astra/**', 'feat/**' ]
   pull_request:
     branches: [ master ]
 
@@ -29,11 +29,23 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
 
-      - name: Run lint
+      - name: Assemble Android tests
+        run: ./gradlew assembleDebugAndroidTest
+
+      - name: Run debug lint
         run: ./gradlew lintDebug
+
+      - name: Run release lint
+        run: ./gradlew lintRelease
 
       - name: Build debug APK
         run: ./gradlew assembleDebug
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease
+
+      - name: Build release bundle
+        run: ./gradlew bundleRelease
 
       - name: Upload test results
         if: always()
@@ -48,5 +60,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lint-results
-          path: app/build/reports/lint-results-debug.html
+          path: app/build/reports/lint-results-*.html
           retention-days: 14

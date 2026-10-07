@@ -71,12 +71,30 @@ interface TransactionDao {
 
     @Query(
         """
+        SELECT * FROM transactions
+        WHERE deletedAtEpochMillis IS NULL
+        ORDER BY localDateEpochDay DESC, occurredAtEpochMillis DESC, createdAtEpochMillis DESC
+        """
+    )
+    fun observeAllActive(): Flow<List<TransactionEntity>>
+
+    @Query(
+        """
         UPDATE transactions
         SET deletedAtEpochMillis = :deletedAt, updatedAtEpochMillis = :deletedAt
         WHERE id = :transactionId AND deletedAtEpochMillis IS NULL
         """
     )
     suspend fun softDelete(transactionId: String, deletedAt: Long): Int
+
+    @Query(
+        """
+        UPDATE transactions
+        SET deletedAtEpochMillis = NULL, updatedAtEpochMillis = :restoredAt
+        WHERE id = :transactionId AND deletedAtEpochMillis IS NOT NULL
+        """
+    )
+    suspend fun restore(transactionId: String, restoredAt: Long): Int
 
     @Query("SELECT COUNT(*) FROM transactions WHERE deletedAtEpochMillis IS NULL")
     suspend fun countActive(): Long
