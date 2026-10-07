@@ -34,6 +34,11 @@ class RoomTransactionRepository(
             .map { rows -> rows.map { it.toDomain() } }
     }
 
+    override fun observeAllTransactions(): Flow<List<FinanceTransaction>> {
+        return transactionDao.observeAllActive()
+            .map { rows -> rows.map { it.toDomain() } }
+    }
+
     override fun observeTotal(
         month: YearMonth,
         type: TransactionType,
@@ -114,6 +119,13 @@ class RoomTransactionRepository(
     override suspend fun softDeleteTransaction(transactionId: String) {
         require(transactionDao.softDelete(transactionId, timeProvider.nowEpochMillis()) == 1) {
             "Transaction does not exist or is already deleted: $transactionId"
+        }
+    }
+
+    override suspend fun restoreTransaction(transactionId: String) {
+        val count = transactionDao.restore(transactionId, timeProvider.nowEpochMillis())
+        require(count == 1) {
+            "Transaction does not exist or was not deleted: $transactionId"
         }
     }
 

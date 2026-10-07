@@ -30,10 +30,12 @@ data class CreateTransactionCommand(
 
 interface TransactionRepository {
     fun observeTransactions(month: YearMonth): Flow<List<FinanceTransaction>>
+    fun observeAllTransactions(): Flow<List<FinanceTransaction>>
     fun observeTotal(month: YearMonth, type: TransactionType, currencyCode: String): Flow<Money>
     fun observeCategoryTotals(month: YearMonth, type: TransactionType, currencyCode: String): Flow<List<CategoryTotalRow>>
     suspend fun getTransaction(transactionId: String): FinanceTransaction?
     suspend fun createTransaction(command: CreateTransactionCommand): FinanceTransaction
     suspend fun updateTransaction(transaction: FinanceTransaction): FinanceTransaction
     suspend fun softDeleteTransaction(transactionId: String)
+    suspend fun restoreTransaction(transactionId: String)
 }
