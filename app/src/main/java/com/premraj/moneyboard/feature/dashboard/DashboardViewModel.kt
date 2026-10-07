@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import java.time.YearMonth
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class DashboardViewModel(
     private val observeMonthlyDashboard: ObserveMonthlyDashboardUseCase,
     initialMonth: YearMonth = YearMonth.now()
