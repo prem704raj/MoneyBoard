@@ -1,5 +1,6 @@
 package com.premraj.moneyboard.feature.dashboard
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -8,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.premraj.moneyboard.core.dashboard.ObserveMonthlyDashboardUseCase
 import com.premraj.moneyboard.core.domain.model.DashboardMode
 import com.premraj.moneyboard.core.domain.model.MonthlyDashboardSnapshot
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,7 +21,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import java.time.YearMonth
 
-@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 class DashboardViewModel(
     private val observeMonthlyDashboard: ObserveMonthlyDashboardUseCase,
     initialMonth: YearMonth = YearMonth.now()
@@ -27,17 +29,19 @@ class DashboardViewModel(
 
     private val selectedMonth = MutableStateFlow(initialMonth)
     private val selectedMode = MutableStateFlow(DashboardMode.PLAN)
+    private var cachedSnapshot: MonthlyDashboardSnapshot? = null
 
     private val dataState: Flow<DataState> =
         selectedMonth.flatMapLatest { month ->
             observeMonthlyDashboard(month)
-                .map<MonthlyDashboardSnapshot, DataState> {
-                    DataState.Data(it)
+                .map<MonthlyDashboardSnapshot, DataState> { snapshot ->
+                    cachedSnapshot = snapshot
+                    DataState.Data(snapshot)
                 }
-                .onStart {
-                    emit(DataState.Loading)
-                }
-                .catch {
+                .catch { throwable ->
+                    runCatching {
+                        Log.e("DashboardViewModel", "Failed to load dashboard for month $month", throwable)
+                    }
                     emit(DataState.Error)
                 }
         }
@@ -53,15 +57,17 @@ class DashboardViewModel(
                     DashboardUiState(
                         selectedMonth = month,
                         mode = mode,
-                        isLoading = true
+                        snapshot = cachedSnapshot,
+                        isLoading = cachedSnapshot == null
                     )
 
                 DataState.Error ->
                     DashboardUiState(
                         selectedMonth = month,
                         mode = mode,
+                        snapshot = cachedSnapshot,
                         isLoading = false,
-                        errorMessage = "Unable to load your finance dashboard."
+                        errorMessage = if (cachedSnapshot == null) "Unable to load your finance dashboard." else null
                     )
 
                 is DataState.Data ->
@@ -91,6 +97,14 @@ class DashboardViewModel(
             selectedMonth.value.plusMonths(1)
     }
 
+    fun resetToCurrentMonth() {
+        selectedMonth.value = YearMonth.now()
+    }
+
+    fun selectMonth(month: YearMonth) {
+        selectedMonth.value = month
+    }
+
     fun selectMode(mode: DashboardMode) {
         selectedMode.value = mode
     }
@@ -106,12 +120,14 @@ class DashboardViewModel(
 
     companion object {
         fun factory(
-            observeMonthlyDashboard: ObserveMonthlyDashboardUseCase
+            observeMonthlyDashboard: ObserveMonthlyDashboardUseCase,
+            initialMonth: YearMonth = YearMonth.now()
         ): ViewModelProvider.Factory =
             viewModelFactory {
                 initializer {
                     DashboardViewModel(
-                        observeMonthlyDashboard = observeMonthlyDashboard
+                        observeMonthlyDashboard = observeMonthlyDashboard,
+                        initialMonth = initialMonth
                     )
                 }
             }

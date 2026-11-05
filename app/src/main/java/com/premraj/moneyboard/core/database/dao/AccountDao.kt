@@ -19,11 +19,17 @@ interface AccountDao {
     @Query("SELECT COUNT(*) FROM accounts")
     suspend fun countAll(): Long
 
+    @Query("SELECT * FROM accounts")
+    suspend fun getAll(): List<AccountEntity>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(account: AccountEntity)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIfAbsent(accounts: List<AccountEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(accounts: List<AccountEntity>)
 
     @Update
     suspend fun update(account: AccountEntity)

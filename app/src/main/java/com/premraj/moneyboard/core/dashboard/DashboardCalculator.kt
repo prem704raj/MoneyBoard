@@ -41,10 +41,8 @@ object DashboardCalculator {
                 it.deletedAtEpochMillis == null
         }
 
-        val plannedLines = plans.map { plan ->
-            val category = requireNotNull(categoryMap[plan.categoryId]) {
-                "Missing category ${plan.categoryId}"
-            }
+        val plannedLines = plans.mapNotNull { plan ->
+            val category = categoryMap[plan.categoryId] ?: return@mapNotNull null
 
             DashboardCategoryLine(
                 categoryId = category.id,
@@ -56,45 +54,57 @@ object DashboardCalculator {
             )
         }.sortedWith(compareBy(DashboardCategoryLine::sortOrder, DashboardCategoryLine::name))
 
-        val actualLines = tx
+        val actualMap = tx
             .filter {
                 it.type == TransactionType.EXPENSE ||
                     it.type == TransactionType.SAVING ||
                     it.type == TransactionType.INVESTMENT
             }
             .groupBy(FinanceTransaction::categoryId)
-            .map { (categoryId, items) ->
-                val category = requireNotNull(categoryMap[categoryId]) {
-                    "Missing category $categoryId"
-                }
 
-                DashboardCategoryLine(
-                    categoryId = category.id,
-                    name = category.name,
-                    iconKey = category.iconKey,
-                    type = category.type,
-                    amount = Money.sum(items.map(FinanceTransaction::amount), currencyCode),
-                    sortOrder = category.sortOrder
-                )
-            }
-            .sortedWith(compareBy(DashboardCategoryLine::sortOrder, DashboardCategoryLine::name))
+        val allActualCategoryIds = if (plans.isNotEmpty()) {
+            (plans.map { it.categoryId } + actualMap.keys).distinct()
+        } else if (actualMap.isNotEmpty()) {
+            actualMap.keys.toList()
+        } else {
+            categories
+                .filter { !it.archived && (it.type == CategoryType.EXPENSE || it.type == CategoryType.SAVING || it.type == CategoryType.INVESTMENT) }
+                .map { it.id }
+        }
+
+        val actualLines = allActualCategoryIds.mapNotNull { categoryId ->
+            val category = categoryMap[categoryId] ?: return@mapNotNull null
+            val items = actualMap[categoryId] ?: emptyList()
+            DashboardCategoryLine(
+                categoryId = category.id,
+                name = category.name,
+                iconKey = category.iconKey,
+                type = category.type,
+                amount = Money.sum(items.map(FinanceTransaction::amount), currencyCode),
+                sortOrder = category.sortOrder
+            )
+        }.sortedWith(compareBy(DashboardCategoryLine::sortOrder, DashboardCategoryLine::name))
 
         val plannedIncome = Money.sum(
             planIncome.map(MonthlyIncomePlan::plannedAmount),
             currencyCode
         )
 
-        val actualIncome = Money.sum(
+        val actualIncomeRaw = Money.sum(
             tx.filter { it.type == TransactionType.INCOME }
                 .map(FinanceTransaction::amount),
             currencyCode
         )
 
+        // Truthful accounting: Actual received income must reflect recorded income transactions,
+        // never deceptively substituting planned salary when no actual income was logged.
+        val effectiveActualIncome = actualIncomeRaw
+
         return MonthlyDashboardSnapshot(
             month = month,
             currencyCode = currencyCode,
             planned = metrics(plannedIncome, plannedLines, currencyCode),
-            actual = metrics(actualIncome, actualLines, currencyCode),
+            actual = metrics(effectiveActualIncome, actualLines, currencyCode),
             plannedCategoryLines = plannedLines,
             actualCategoryLines = actualLines,
             hasPlan = planIncome.isNotEmpty() || plans.isNotEmpty(),

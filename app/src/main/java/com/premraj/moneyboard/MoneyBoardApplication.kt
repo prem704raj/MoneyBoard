@@ -25,12 +25,7 @@ class MoneyBoardApplication : Application() {
 
         applicationScope.launch {
             appContainer.databaseInitializer.initialize()
-
-            if (BuildConfig.DEBUG) {
-                appContainer.referenceDemoPlanSeeder.seedIfEmpty(
-                    YearMonth.now()
-                )
-            }
+            // In production, reference demo plans are loaded on-demand via Settings (seedIfEmpty is intentionally omitted from startup to avoid polluting real user data).
         }
     }
 }

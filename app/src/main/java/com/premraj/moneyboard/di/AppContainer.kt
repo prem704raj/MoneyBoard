@@ -72,4 +72,9 @@ class AppContainer(
         ReferenceDemoPlanSeeder(
             monthlyPlanRepository = monthlyPlanRepository
         )
+
+    val userSettingsRepository =
+        com.premraj.moneyboard.core.settings.UserSettingsRepository(
+            context = context
+        )
 }

@@ -15,10 +15,17 @@ data class MonthlyIncomePlan(
 ) {
     init {
         require(name.isNotBlank())
-        require(plannedAmount.amountMinor > 0L)
+        require(plannedAmount.amountMinor >= 0L)
         require(
             expectedDate == null ||
                 YearMonth.from(expectedDate) == month
         )
     }
+
+    fun withMonth(targetMonth: YearMonth): MonthlyIncomePlan = copy(
+        month = targetMonth,
+        expectedDate = expectedDate?.let { date ->
+            targetMonth.atDay(date.dayOfMonth.coerceAtMost(targetMonth.lengthOfMonth()))
+        }
+    )
 }

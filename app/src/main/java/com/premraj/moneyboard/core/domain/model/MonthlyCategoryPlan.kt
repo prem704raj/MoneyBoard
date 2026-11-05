@@ -11,6 +11,6 @@ data class MonthlyCategoryPlan(
 ) {
     init {
         require(categoryId.isNotBlank())
-        require(plannedAmount.amountMinor > 0L)
+        require(plannedAmount.amountMinor >= 0L)
     }
 }

@@ -26,3 +26,10 @@ Thumbs.db
 
 # Misc
 *.log
+
+# Internal agent teamwork artifacts
+.agents/
+skills-lock.json
+
+# Temporary test artifacts
+test_icon_*.png

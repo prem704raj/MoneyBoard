@@ -10,7 +10,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.premraj.moneyboard"
+        applicationId = "com.salarylane.app"
         minSdk = 26
         targetSdk = 37
         versionCode = 1
@@ -82,6 +82,7 @@ dependencies {
 
     testImplementation(libs.junit4)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation("org.json:json:20240303")
 
     androidTestImplementation(libs.junit4)
     androidTestImplementation(libs.androidx.test.core)

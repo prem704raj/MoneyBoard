@@ -37,6 +37,70 @@ interface MonthlyPlanDao {
     @Query(
         """
         SELECT *
+        FROM monthly_category_plans
+        WHERE monthKey = COALESCE(
+            (SELECT monthKey FROM monthly_category_plans WHERE monthKey = :monthKey LIMIT 1),
+            (SELECT monthKey FROM monthly_category_plans WHERE monthKey <= :monthKey ORDER BY monthKey DESC LIMIT 1),
+            (SELECT monthKey FROM monthly_category_plans ORDER BY ABS(((monthKey / 100) * 12 + (monthKey % 100)) - ((:monthKey / 100) * 12 + (:monthKey % 100))) ASC LIMIT 1)
+        )
+        ORDER BY categoryId ASC
+        """
+    )
+    fun observeCategoryPlansInherited(
+        monthKey: Int
+    ): Flow<List<MonthlyCategoryPlanEntity>>
+
+    @Query(
+        """
+        SELECT *
+        FROM monthly_income_plans
+        WHERE monthKey = COALESCE(
+            (SELECT monthKey FROM monthly_income_plans WHERE monthKey = :monthKey LIMIT 1),
+            (SELECT monthKey FROM monthly_income_plans WHERE monthKey <= :monthKey ORDER BY monthKey DESC LIMIT 1),
+            (SELECT monthKey FROM monthly_income_plans ORDER BY ABS(((monthKey / 100) * 12 + (monthKey % 100)) - ((:monthKey / 100) * 12 + (:monthKey % 100))) ASC LIMIT 1)
+        )
+        ORDER BY sortOrder ASC, name COLLATE NOCASE ASC
+        """
+    )
+    fun observeIncomePlansInherited(
+        monthKey: Int
+    ): Flow<List<MonthlyIncomePlanEntity>>
+
+    @Query(
+        """
+        SELECT *
+        FROM monthly_category_plans
+        WHERE monthKey = COALESCE(
+            (SELECT monthKey FROM monthly_category_plans WHERE monthKey = :monthKey LIMIT 1),
+            (SELECT monthKey FROM monthly_category_plans WHERE monthKey <= :monthKey ORDER BY monthKey DESC LIMIT 1),
+            (SELECT monthKey FROM monthly_category_plans ORDER BY ABS(((monthKey / 100) * 12 + (monthKey % 100)) - ((:monthKey / 100) * 12 + (:monthKey % 100))) ASC LIMIT 1)
+        )
+        ORDER BY categoryId ASC
+        """
+    )
+    suspend fun getCategoryPlansInherited(
+        monthKey: Int
+    ): List<MonthlyCategoryPlanEntity>
+
+    @Query(
+        """
+        SELECT *
+        FROM monthly_income_plans
+        WHERE monthKey = COALESCE(
+            (SELECT monthKey FROM monthly_income_plans WHERE monthKey = :monthKey LIMIT 1),
+            (SELECT monthKey FROM monthly_income_plans WHERE monthKey <= :monthKey ORDER BY monthKey DESC LIMIT 1),
+            (SELECT monthKey FROM monthly_income_plans ORDER BY ABS(((monthKey / 100) * 12 + (monthKey % 100)) - ((:monthKey / 100) * 12 + (:monthKey % 100))) ASC LIMIT 1)
+        )
+        ORDER BY sortOrder ASC, name COLLATE NOCASE ASC
+        """
+    )
+    suspend fun getIncomePlansInherited(
+        monthKey: Int
+    ): List<MonthlyIncomePlanEntity>
+
+    @Query(
+        """
+        SELECT *
         FROM monthly_income_plans
         WHERE id = :id
         LIMIT 1
@@ -94,4 +158,22 @@ interface MonthlyPlanDao {
         "SELECT COUNT(*) FROM monthly_category_plans WHERE monthKey = :monthKey"
     )
     suspend fun categoryPlanCount(monthKey: Int): Long
+
+    @Query("SELECT COUNT(*) FROM monthly_category_plans")
+    suspend fun totalCategoryPlanCount(): Long
+
+    @Query("SELECT COUNT(*) FROM monthly_income_plans")
+    suspend fun totalIncomePlanCount(): Long
+
+    @Query("SELECT * FROM monthly_income_plans")
+    suspend fun getAllIncomePlans(): List<MonthlyIncomePlanEntity>
+
+    @Query("SELECT * FROM monthly_category_plans")
+    suspend fun getAllCategoryPlans(): List<MonthlyCategoryPlanEntity>
+
+    @Upsert
+    suspend fun upsertIncomePlans(entities: List<MonthlyIncomePlanEntity>)
+
+    @Upsert
+    suspend fun upsertCategoryPlans(entities: List<MonthlyCategoryPlanEntity>)
 }

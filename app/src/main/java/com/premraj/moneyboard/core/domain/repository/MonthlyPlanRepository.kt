@@ -48,5 +48,7 @@ interface MonthlyPlanRepository {
         command: SetCategoryPlanCommand
     ): MonthlyCategoryPlan?
 
+    suspend fun deleteCategoryPlan(month: YearMonth, categoryId: String)
+
     suspend fun hasAnyPlan(month: YearMonth): Boolean
 }
