@@ -45,7 +45,7 @@ data class DonutSliceUi(
 
 @Composable
 fun CategoryDonutCard(
-    totalMonthlyText: String = "₹69,350",
+    totalMonthlyText: String = "₹0",
     slices: List<DonutSliceUi> = defaultDonutSlices(),
     modifier: Modifier = Modifier
 ) {

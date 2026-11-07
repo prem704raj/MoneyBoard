@@ -6,7 +6,7 @@ data class UserSettings(
     val cityName: String = "Pune",
     val profileTag: String = "Single Person",
     val emiTag: String = "",
-    val inHandSalaryRupees: Long = 70_000L,
+    val inHandSalaryRupees: Long = 0L,
     val currencyCode: String = "INR",
     val themeMode: ThemeMode = ThemeMode.LIGHT,
     val defaultMode: DashboardMode = DashboardMode.PLAN,

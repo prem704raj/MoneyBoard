@@ -33,7 +33,7 @@ import com.premraj.moneyboard.feature.dashboard.formatIndianRupees
 
 @Composable
 fun TotalAllocationBanner(
-    amountText: String = "₹69,350",
+    amountText: String = "₹0",
     remainingText: String? = null,
     salaryText: String? = null,
     modifier: Modifier = Modifier

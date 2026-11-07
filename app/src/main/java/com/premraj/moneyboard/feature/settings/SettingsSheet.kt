@@ -692,7 +692,7 @@ private fun EditProfileDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val salNum = salary.toLongOrNull() ?: 70_000L
+                    val salNum = salary.toLongOrNull() ?: 0L
                     onConfirm(city, profile, emi, salNum)
                 },
                 colors = ButtonDefaults.buttonColors(

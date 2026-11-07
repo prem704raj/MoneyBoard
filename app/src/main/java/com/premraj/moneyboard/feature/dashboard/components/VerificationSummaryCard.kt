@@ -30,12 +30,12 @@ import com.premraj.moneyboard.core.designsystem.MoneyBoardColors
 
 @Composable
 fun VerificationSummaryCard(
-    totalMonthlyText: String = "₹69,350",
-    salaryText: String = "₹70,000",
-    remainingText: String = "₹650",
-    annualExpensesText: String = "₹8,32,200",
-    annualSalaryText: String = "₹8,40,000",
-    annualBalanceText: String = "₹7,800",
+    totalMonthlyText: String = "₹0",
+    salaryText: String = "₹0",
+    remainingText: String = "₹0",
+    annualExpensesText: String = "₹0",
+    annualSalaryText: String = "₹0",
+    annualBalanceText: String = "₹0",
     modifier: Modifier = Modifier
 ) {
     val isDark = MaterialTheme.colorScheme.background == MoneyBoardColors.DarkBackground

@@ -208,7 +208,7 @@ object FullDatabaseBackupManager {
             val city = settingsObj.optString("cityName", "Pune")
             val profile = settingsObj.optString("profileTag", "Single Person")
             val emi = settingsObj.optString("emiTag", "")
-            val salary = settingsObj.optLong("inHandSalaryRupees", 70_000L)
+            val salary = settingsObj.optLong("inHandSalaryRupees", 0L)
             val scale = settingsObj.optDouble("textScale", 1.0).toFloat()
 
             settingsRepository.updateCity(city)

@@ -58,7 +58,7 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun FinanceHeroHeader(
-    salaryText: String = "₹70,000 / month",
+    salaryText: String = "₹0 / month",
     cityName: String = "Pune",
     profileTag: String = "Single Person",
     emiTag: String? = null,

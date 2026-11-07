@@ -19,7 +19,7 @@ class UserSettingsRepository(context: Context) {
         val city = prefs.getString(KEY_CITY, "Pune") ?: "Pune"
         val profile = prefs.getString(KEY_PROFILE_TAG, "Single Person") ?: "Single Person"
         val emi = prefs.getString(KEY_EMI_TAG, "No EMI") ?: "No EMI"
-        val salary = prefs.getLong(KEY_SALARY, 70_000L)
+        val salary = prefs.getLong(KEY_SALARY, 0L)
         val currency = prefs.getString(KEY_CURRENCY, "INR") ?: "INR"
         val themeStr = prefs.getString(KEY_THEME, ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
         val theme = runCatching { ThemeMode.valueOf(themeStr) }.getOrDefault(ThemeMode.SYSTEM)
@@ -56,7 +56,7 @@ class UserSettingsRepository(context: Context) {
     }
 
     fun updateSalary(salaryRupees: Long) {
-        val s = salaryRupees.coerceAtLeast(1_000L)
+        val s = salaryRupees.coerceAtLeast(0L)
         prefs.edit().putLong(KEY_SALARY, s).apply()
         _settings.value = _settings.value.copy(inHandSalaryRupees = s)
     }

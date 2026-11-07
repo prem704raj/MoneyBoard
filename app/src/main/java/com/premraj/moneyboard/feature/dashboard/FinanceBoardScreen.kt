@@ -100,7 +100,7 @@ fun FinanceBoardScreen(
                 val board = uiState.snapshot?.toFinanceBoardUi(uiState.mode)
                     ?: FinanceBoardUiModel(
                         salaryText = "₹${userSettings.inHandSalaryRupees} / month",
-                        totalAllocationText = "₹69,350",
+                        totalAllocationText = "₹0",
                         expenseRows = DashboardPreviewData.expenses,
                         salaryVsExpenses = DashboardPreviewData.salaryVsExpenses,
                         savings = DashboardPreviewData.savings,
@@ -108,11 +108,11 @@ fun FinanceBoardScreen(
                         annual = DashboardPreviewData.annual,
                         chartLines = emptyList(),
                         donutSlices = com.premraj.moneyboard.feature.dashboard.components.defaultDonutSlices(),
-                        remainingText = "₹650 / month",
-                        savingsRateText = "20.2%",
-                        totalSavingsText = "₹14,000 / month",
-                        actualSpendingText = "₹55,350 / month",
-                        annualBalanceText = "₹7,800"
+                        remainingText = "₹0 / month",
+                        savingsRateText = "0.0%",
+                        totalSavingsText = "₹0 / month",
+                        actualSpendingText = "₹0 / month",
+                        annualBalanceText = "₹0"
                     )
 
                 LazyColumn(
