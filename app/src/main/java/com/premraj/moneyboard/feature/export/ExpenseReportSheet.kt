@@ -2,6 +2,7 @@ package com.premraj.moneyboard.feature.export
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -53,7 +54,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,13 +64,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.premraj.moneyboard.R
 import com.premraj.moneyboard.core.database.SeedIds
 import com.premraj.moneyboard.core.settings.UserSettings
 import com.premraj.moneyboard.feature.dashboard.ExpenseRowUi
 import com.premraj.moneyboard.feature.dashboard.FinanceBoardUiModel
 import com.premraj.moneyboard.feature.dashboard.components.DonutSliceUi
 import com.premraj.moneyboard.feature.dashboard.components.ExpenseIconView
-import com.premraj.moneyboard.feature.dashboard.components.SkylineIllustration
 import com.premraj.moneyboard.feature.dashboard.formatIndianRupees
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -77,19 +80,22 @@ import kotlin.math.roundToInt
 private const val SHEET_WIDTH_PX = 1224
 
 /**
- * Unified 1224px wide expense report sheet composable pixel-matching IMAGE 3 design.
+ * Unified 1224px wide expense report sheet composable inspired by high-contrast, bold typography
+ * and fine-art landscape header banner.
  * Rendered at density 1 (LocalDensity provides Density(1f)) so 1224px is exact across all devices.
  *
  * Layout Structure:
- * 1. Dark navy-to-blue gradient Header banner with skyline illustration, title ("Monthly" + cyan "Expense" + "Breakdown"),
- *    dynamic pill chips ("Single Person", City, and EMI only if > 0), top-right city badge, and glassy teal in-hand salary card.
+ * 1. Scenic Landscape Fine-Art Header banner (header_landscape_art.jpg) with dark translucent scrim,
+ *    title ("Monthly " + cyan "Expense " + "Breakdown" in bold 28sp), dynamic pill chips ("Single Person",
+ *    City, Month, Mode, and EMI only if > 0), top-right location badge, and glassy teal in-hand salary card.
  * 2. Large rounded white content panel starting under the header:
  *    a. Dual Expense Cards: "Essential Expenses" (blue theme) and "Other Expenses" (purple theme) with continuous
- *       numbering (1..N), illustrated icons, amounts, and horizontal progress bars scaled by max item amount.
+ *       numbering (1..N), illustrated icons, high-contrast bold amounts, and clean readable columns without zooming.
  *    b. Total Monthly Expenses bar (dark blue gradient with calculator icon and right-aligned total)
  *       plus "You save ₹X / month" (or "Over budget") green/red card.
- *    c. Four Themed Summary Cards in a SINGLE row (Salary vs Expenses, Savings & Investments, Actual Living / Travel, Annual Summary).
- *    d. Bottom Row: Donut Chart Card (left) with center total and 6 category breakdown rows,
+ *    c. Four Themed Summary Cards in a SINGLE row (Salary vs Expenses, Savings & Investments, Actual Living / Travel, Annual Summary)
+ *       with enlarged bold typography.
+ *    d. Bottom Row: Donut Chart Card (left) with center total and 6 category breakdown rows with bold percentages,
  *       and Quick Summary Card (right) with 6 metric rows, potted plant with coins illustration, and italic balance status.
  */
 @Composable
@@ -152,7 +158,7 @@ fun ExpenseReportSheet(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Header Banner
+            // 1. Scenic Fine-Art Landscape Header Banner
             ReportHeaderCard(
                 profileTag = settings.profileTag,
                 cityName = settings.cityName,
@@ -166,13 +172,13 @@ fun ExpenseReportSheet(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 color = Color.White,
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                border = BorderStroke(1.dp, Color(0xFFCBD5E1))
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
                     // a. Side-by-side Dual Expense Cards
                     ReportDualExpenseCards(rows = rows)
@@ -210,10 +216,10 @@ fun ExpenseReportSheet(
 }
 
 /**
- * Header Banner matching IMAGE 3:
- * Dark navy-to-blue gradient banner with faint skyline illustration on right,
- * title with cyan "Expense" accent, dynamic chips (Profile, City, and EMI only if > 0),
- * top-right city badge, and glassy teal in-hand salary card.
+ * Scenic Fine-Art Landscape Header Banner:
+ * Features header_landscape_art.jpg fine-art background with a balanced dark-to-translucent navy scrim,
+ * high-contrast bold title ("Monthly" + cyan "Expense" + "Breakdown"), dynamic pill chips,
+ * top-right location badge, and glassy teal in-hand salary card.
  */
 @Composable
 private fun ReportHeaderCard(
@@ -223,55 +229,59 @@ private fun ReportHeaderCard(
     salaryRupees: Long,
     selectedMonth: YearMonth = YearMonth.now()
 ) {
-    val headerGradient = Brush.horizontalGradient(
-        colors = listOf(
-            Color(0xFF091830),
-            Color(0xFF102E65),
-            Color(0xFF1B4D9E)
-        )
-    )
-
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         color = Color(0xFF091830)
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(headerGradient)
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Faint skyline silhouette on right
-            SkylineIllustration(
+            // Fine-art landscape painting background (Image 2)
+            Image(
+                painter = painterResource(id = R.drawable.header_landscape_art),
+                contentDescription = "Scenic landscape header art",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
+            )
+
+            // Elegant dark-to-translucent gradient scrim ensuring maximum contrast and legibility
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.55f)
-                    .height(96.dp)
-                    .align(Alignment.BottomEnd),
-                tint = Color.White.copy(alpha = 0.22f)
+                    .matchParentSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xDE08162A), // 87% dark navy over left title & chips
+                                Color(0xB80E2548), // 72% navy in middle
+                                Color(0x66103362)  // 40% navy on right, revealing mountains & sky
+                            )
+                        )
+                    )
             )
 
             // Top-right location badge
             Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 16.dp, end = 20.dp)
-                    .background(Color(0x33000000), RoundedCornerShape(14.dp))
-                    .border(BorderStroke(1.dp, Color(0x33FFFFFF)), RoundedCornerShape(14.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .padding(top = 16.dp, end = 22.dp)
+                    .background(Color(0x66000000), RoundedCornerShape(16.dp))
+                .border(BorderStroke(1.dp, Color(0x66FFFFFF)), RoundedCornerShape(16.dp))
+                .padding(horizontal = 12.dp, vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.LocationOn,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(13.dp)
+                    modifier = Modifier.size(15.dp)
                 )
                 Text(
                     text = cityName.ifBlank { "Pune" },
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
                     ),
                     color = Color.White
                 )
@@ -281,18 +291,18 @@ private fun ReportHeaderCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 22.dp),
+                    .padding(start = 26.dp, end = 26.dp, top = 24.dp, bottom = 24.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left Column: Title & Pill Chips
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Left Column: Bold Title & Dynamic Pill Chips
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "Monthly ",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 26.sp,
+                                fontSize = 30.sp,
                                 letterSpacing = (-0.5).sp
                             ),
                             color = Color.White
@@ -301,7 +311,7 @@ private fun ReportHeaderCard(
                             text = "Expense ",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 26.sp,
+                                fontSize = 30.sp,
                                 letterSpacing = (-0.5).sp
                             ),
                             color = Color(0xFF38BDF8)
@@ -310,7 +320,7 @@ private fun ReportHeaderCard(
                             text = "Breakdown",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 26.sp,
+                                fontSize = 30.sp,
                                 letterSpacing = (-0.5).sp
                             ),
                             color = Color.White
@@ -319,7 +329,7 @@ private fun ReportHeaderCard(
 
                     // Dynamic Pill Chips: "Single Person", City, Month, Plan & Actual, and EMI only if > 0
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         HeaderChip(
@@ -354,63 +364,63 @@ private fun ReportHeaderCard(
                 // Right: Glassy Teal In-hand Salary Card
                 Box(
                     modifier = Modifier
-                        .padding(top = 18.dp)
+                        .padding(top = 14.dp)
                         .background(
                             Brush.horizontalGradient(
                                 listOf(Color(0xFF0F766E), Color(0xFF0D9488), Color(0xFF14B8A6))
                             ),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(14.dp)
                         )
                         .border(
-                            BorderStroke(1.dp, Color(0x66FFFFFF)),
-                            shape = RoundedCornerShape(12.dp)
+                            BorderStroke(1.5.dp, Color(0x80FFFFFF)),
+                            shape = RoundedCornerShape(14.dp)
                         )
-                        .padding(horizontal = 18.dp, vertical = 10.dp)
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .background(Color(0x33FFFFFF), RoundedCornerShape(8.dp)),
+                                .size(42.dp)
+                                .background(Color(0x33FFFFFF), RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.AccountBalanceWallet,
                                 contentDescription = null,
                                 tint = Color.White,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(24.dp)
                             )
                         }
 
                         Column {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
                             ) {
                                 Text(
                                     text = "In-hand Salary",
                                     style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = 11.5.sp,
-                                        fontWeight = FontWeight.Medium
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
                                     ),
-                                    color = Color.White.copy(alpha = 0.92f)
+                                    color = Color.White.copy(alpha = 0.95f)
                                 )
                                 Icon(
                                     imageVector = Icons.Rounded.AutoAwesome,
                                     contentDescription = null,
                                     tint = Color(0xFFFDE047),
-                                    modifier = Modifier.size(11.dp)
+                                    modifier = Modifier.size(13.dp)
                                 )
                             }
 
                             Text(
                                 text = "₹${formatIndianRupees(salaryRupees)} / month",
                                 style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 17.sp
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 20.sp
                                 ),
                                 color = Color.White
                             )
@@ -429,23 +439,23 @@ private fun HeaderChip(
 ) {
     Row(
         modifier = Modifier
-            .background(Color(0x24FFFFFF), RoundedCornerShape(16.dp))
-            .border(BorderStroke(1.dp, Color(0x4DFFFFFF)), RoundedCornerShape(16.dp))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+            .background(Color(0x3D000000), RoundedCornerShape(16.dp))
+            .border(BorderStroke(1.dp, Color(0x66FFFFFF)), RoundedCornerShape(16.dp))
+            .padding(horizontal = 12.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = Color.White,
-            modifier = Modifier.size(13.dp)
+            modifier = Modifier.size(15.dp)
         )
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall.copy(
-                fontSize = 11.5.sp,
-                fontWeight = FontWeight.Medium
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
             ),
             color = Color.White
         )
@@ -457,7 +467,7 @@ private fun HeaderChip(
  * - Left: "Essential Expenses" (blue theme, house icon)
  * - Right: "Other Expenses" (purple theme, wallet icon)
  * Continuous numbering across both cards (1..N).
- * Horizontal progress bars scaled by max item amount across all items.
+ * High-contrast bold typography inspired by Image 4 so everything is easily readable without zoom.
  */
 @Composable
 private fun ReportDualExpenseCards(rows: List<ExpenseRowUi>) {
@@ -478,11 +488,12 @@ private fun ReportDualExpenseCards(rows: List<ExpenseRowUi>) {
         (otherPlanMinor.toDouble() / totalPlanMinor.toDouble()) * 100.0
     } else 0.0
 
+    val hasActualSpending = rows.any { it.actualAmountMinor > 0L }
     val maxAmountMinor = rows.maxOfOrNull { maxOf(it.amountMinor, it.actualAmountMinor) }?.coerceAtLeast(1L) ?: 1L
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Left Card: Essential Expenses
         Box(modifier = Modifier.weight(1f)) {
@@ -492,15 +503,16 @@ private fun ReportDualExpenseCards(rows: List<ExpenseRowUi>) {
                 badgeBgColor = Color(0xFF2563EB),
                 badgeIcon = Icons.Rounded.Home,
                 cardBorderColor = Color(0xFFBFDBFE),
-                headerRowBg = Color(0xFFF0F7FF),
+                headerRowBg = Color(0xFFEBF3FC),
                 trackColor = Color(0xFFDBEAFE),
-                barFillColor = Color(0xFF3B82F6),
-                pillBgColor = Color(0xFF3B82F6),
+                barFillColor = Color(0xFF2563EB),
+                pillBgColor = Color(0xFF2563EB),
                 sectionPlanRupees = essentialPlanMinor / 100L,
                 sectionActualRupees = essentialActualMinor / 100L,
                 percentageValue = essentialPct,
                 items = essentialItems,
                 numberOffset = 0,
+                hasActualSpending = hasActualSpending,
                 maxAmountMinor = maxAmountMinor
             )
         }
@@ -513,15 +525,16 @@ private fun ReportDualExpenseCards(rows: List<ExpenseRowUi>) {
                 badgeBgColor = Color(0xFF7C3AED),
                 badgeIcon = Icons.Rounded.AccountBalanceWallet,
                 cardBorderColor = Color(0xFFDDD6FE),
-                headerRowBg = Color(0xFFFAF5FF),
-                trackColor = Color(0xFFF3E8FF),
-                barFillColor = Color(0xFFC084FC),
-                pillBgColor = Color(0xFF8B5CF6),
+                headerRowBg = Color(0xFFF3E8FF),
+                trackColor = Color(0xFFEDE9FE),
+                barFillColor = Color(0xFF7C3AED),
+                pillBgColor = Color(0xFF7C3AED),
                 sectionPlanRupees = otherPlanMinor / 100L,
                 sectionActualRupees = otherActualMinor / 100L,
                 percentageValue = otherPct,
                 items = otherItems,
                 numberOffset = essentialItems.size,
+                hasActualSpending = hasActualSpending,
                 maxAmountMinor = maxAmountMinor
             )
         }
@@ -544,11 +557,12 @@ private fun ExpenseSectionCard(
     percentageValue: Double,
     items: List<ExpenseRowUi>,
     numberOffset: Int,
+    hasActualSpending: Boolean,
     maxAmountMinor: Long
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(12.dp),
         color = Color.White,
         border = BorderStroke(1.dp, cardBorderColor)
     ) {
@@ -557,17 +571,17 @@ private fun ExpenseSectionCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(32.dp)
                             .background(badgeBgColor, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
@@ -575,15 +589,15 @@ private fun ExpenseSectionCard(
                             imageVector = badgeIcon,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 17.sp
                         ),
                         color = titleColor
                     )
@@ -591,7 +605,7 @@ private fun ExpenseSectionCard(
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -601,51 +615,53 @@ private fun ExpenseSectionCard(
                             Text(
                                 text = "Plan: ",
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Normal
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Medium
                                 ),
-                                color = Color(0xFF64748B)
+                                color = Color(0xFF475569)
                             )
                             Text(
                                 text = "₹${formatIndianRupees(sectionPlanRupees)}",
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.Bold
                                 ),
-                                color = Color(0xFF334155)
+                                color = Color(0xFF0F172A)
                             )
                         }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Actual: ",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = titleColor
-                            )
-                            Text(
-                                text = "₹${formatIndianRupees(sectionActualRupees)}",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.ExtraBold
-                                ),
-                                color = titleColor
-                            )
+                        if (hasActualSpending) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Actual: ",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
+                                    color = titleColor
+                                )
+                                Text(
+                                    text = "₹${formatIndianRupees(sectionActualRupees)}",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontSize = 13.5.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    ),
+                                    color = titleColor
+                                )
+                            }
                         }
                     }
 
                     Box(
                         modifier = Modifier
                             .background(pillBgColor, RoundedCornerShape(12.dp))
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .padding(horizontal = 10.dp, vertical = 3.dp)
                     ) {
                         Text(
                             text = String.format(Locale.US, "%.1f%%", percentageValue),
                             style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.ExtraBold
                             ),
                             color = Color.White
                         )
@@ -653,105 +669,119 @@ private fun ExpenseSectionCard(
                 }
             }
 
-            // Table Column Header Row: Plan, Actual, and Progress
+            // Table Column Header Row: high-contrast, bold, inspired by Image 4
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(headerRowBg)
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "#",
-                    style = MaterialTheme.typography.labelSmall.copy(
+                    text = "No.",
+                    style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                        fontSize = 13.5.sp
                     ),
-                    color = Color(0xFF334155),
-                    modifier = Modifier.width(26.dp),
+                    color = titleColor,
+                    modifier = Modifier.width(36.dp),
                     textAlign = TextAlign.Center
                 )
 
                 Text(
                     text = "Expense",
-                    style = MaterialTheme.typography.labelSmall.copy(
+                    style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                        fontSize = 14.sp
                     ),
-                    color = Color(0xFF334155),
+                    color = titleColor,
                     modifier = Modifier
                         .weight(1f)
-                        .padding(start = 6.dp)
+                        .padding(start = 8.dp)
                 )
 
-                Text(
-                    text = "Plan (₹)",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
-                    ),
-                    color = Color(0xFF334155),
-                    modifier = Modifier.width(62.dp),
-                    textAlign = TextAlign.End
-                )
+                if (hasActualSpending) {
+                    Text(
+                        text = "Plan (₹)",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp
+                        ),
+                        color = titleColor,
+                        modifier = Modifier.width(76.dp),
+                        textAlign = TextAlign.End
+                    )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                Text(
-                    text = "Actual (₹)",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
-                    ),
-                    color = Color(0xFF334155),
-                    modifier = Modifier.width(62.dp),
-                    textAlign = TextAlign.End
-                )
+                    Text(
+                        text = "Actual (₹)",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp
+                        ),
+                        color = titleColor,
+                        modifier = Modifier.width(76.dp),
+                        textAlign = TextAlign.End
+                    )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                Text(
-                    text = "Progress",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
-                    ),
-                    color = Color(0xFF334155),
-                    modifier = Modifier.width(76.dp),
-                    textAlign = TextAlign.End
-                )
+                    Text(
+                        text = "Progress",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        ),
+                        color = titleColor,
+                        modifier = Modifier.width(80.dp),
+                        textAlign = TextAlign.End
+                    )
+                } else {
+                    // Clean Image 4 style single bold amount column when actual spending is not yet tracked
+                    Text(
+                        text = "Monthly (₹)",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.5.sp
+                        ),
+                        color = titleColor,
+                        modifier = Modifier.width(110.dp),
+                        textAlign = TextAlign.End
+                    )
+                }
             }
 
-            // Table Item Rows with Plan & Actual values
+            // Table Item Rows with bold typography and high-contrast colors
             items.forEachIndexed { index, item ->
                 val rowNumber = numberOffset + index + 1
                 val isZebra = index % 2 == 1
-                val rowBg = if (isZebra) Color(0xFFFAFCFF) else Color.White
+                val rowBg = if (isZebra) Color(0xFFF8FAFC) else Color.White
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(rowBg)
-                        .padding(horizontal = 8.dp, vertical = 4.5.dp),
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = rowNumber.toString(),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
                         ),
-                        color = Color(0xFF64748B),
-                        modifier = Modifier.width(26.dp),
+                        color = Color(0xFF1E293B),
+                        modifier = Modifier.width(36.dp),
                         textAlign = TextAlign.Center
                     )
 
                     ExpenseIconView(
                         item = item,
-                        size = 23.dp
+                        size = 28.dp
                     )
 
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     // Title with sub-line handling
                     Column(
@@ -762,11 +792,11 @@ private fun ExpenseSectionCard(
                         val (primaryTitle, subTitle) = extractTitleParts(item.title)
                         Text(
                             text = primaryTitle,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.Bold
                             ),
-                            color = Color(0xFF1E293B),
+                            color = Color(0xFF0F172A),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -774,97 +804,112 @@ private fun ExpenseSectionCard(
                             Text(
                                 text = subTitle,
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Normal
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Medium
                                 ),
-                                color = Color(0xFF64748B),
+                                color = Color(0xFF475569),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
 
-                    // Plan Amount
                     val planRupees = item.amountMinor / 100L
                     val actualRupees = item.actualAmountMinor / 100L
                     val isOver = actualRupees > planRupees && planRupees > 0L
 
-                    Text(
-                        text = formatIndianRupees(planRupees),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Normal
-                        ),
-                        color = Color(0xFF475569),
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.width(62.dp)
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = formatIndianRupees(actualRupees),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = if (isOver) Color(0xFFDC2626) else if (actualRupees == 0L) Color(0xFF94A3B8) else Color(0xFF0F172A),
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.width(62.dp)
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Progress / Status Bar
-                    Column(
-                        modifier = Modifier.width(76.dp),
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        val pct = if (planRupees > 0L) {
-                            ((actualRupees.toDouble() / planRupees.toDouble()) * 100.0).roundToInt()
-                        } else 0
-
+                    if (hasActualSpending) {
+                        // Plan Amount
                         Text(
-                            text = when {
-                                actualRupees == 0L -> "0%"
-                                isOver -> "+₹${formatIndianRupees(actualRupees - planRupees)}"
-                                else -> "$pct%"
-                            },
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold
+                            text = formatIndianRupees(planRupees),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
                             ),
-                            color = when {
-                                actualRupees == 0L -> Color(0xFF94A3B8)
-                                isOver -> Color(0xFFDC2626)
-                                else -> barFillColor
-                            },
-                            maxLines = 1
+                            color = Color(0xFF334155),
+                            textAlign = TextAlign.End,
+                            modifier = Modifier.width(76.dp)
                         )
 
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(5.dp)
-                                .background(if (isOver) Color(0xFFFEE2E2) else trackColor, RoundedCornerShape(3.dp))
-                        ) {
-                            val barFraction = if (planRupees > 0L) {
-                                (actualRupees.toFloat() / planRupees.toFloat()).coerceIn(0f, 1f)
-                            } else if (actualRupees > 0L) 1f else 0f
+                        Spacer(modifier = Modifier.width(8.dp))
 
-                            if (barFraction > 0f) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth(barFraction)
-                                        .fillMaxHeight()
-                                        .background(
-                                            if (isOver) Color(0xFFEF4444) else barFillColor,
-                                            RoundedCornerShape(3.dp)
-                                        )
-                                )
+                        // Actual Amount
+                        Text(
+                            text = formatIndianRupees(actualRupees),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            ),
+                            color = if (isOver) Color(0xFFDC2626) else if (actualRupees == 0L) Color(0xFF94A3B8) else Color(0xFF0F172A),
+                            textAlign = TextAlign.End,
+                            modifier = Modifier.width(76.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Progress / Status Bar
+                        Column(
+                            modifier = Modifier.width(80.dp),
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            val pct = if (planRupees > 0L) {
+                                ((actualRupees.toDouble() / planRupees.toDouble()) * 100.0).roundToInt()
+                            } else 0
+
+                            Text(
+                                text = when {
+                                    actualRupees == 0L -> "0%"
+                                    isOver -> "+₹${formatIndianRupees(actualRupees - planRupees)}"
+                                    else -> "$pct%"
+                                },
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = when {
+                                    actualRupees == 0L -> Color(0xFF94A3B8)
+                                    isOver -> Color(0xFFDC2626)
+                                    else -> barFillColor
+                                },
+                                maxLines = 1
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .background(if (isOver) Color(0xFFFEE2E2) else trackColor, RoundedCornerShape(3.dp))
+                            ) {
+                                val barFraction = if (planRupees > 0L) {
+                                    (actualRupees.toFloat() / planRupees.toFloat()).coerceIn(0f, 1f)
+                                } else if (actualRupees > 0L) 1f else 0f
+
+                                if (barFraction > 0f) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(barFraction)
+                                            .fillMaxHeight()
+                                            .background(
+                                                if (isOver) Color(0xFFEF4444) else barFillColor,
+                                                RoundedCornerShape(3.dp)
+                                            )
+                                    )
+                                }
                             }
                         }
+                    } else {
+                        // Image 4 style single bold prominent Monthly amount
+                        Text(
+                            text = formatIndianRupees(planRupees),
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 16.5.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            ),
+                            color = Color(0xFF0F172A),
+                            textAlign = TextAlign.End,
+                            modifier = Modifier.width(110.dp)
+                        )
                     }
                 }
 
@@ -873,7 +918,7 @@ private fun ExpenseSectionCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(Color(0xFFF1F5F9))
+                            .background(Color(0xFFE2E8F0))
                     )
                 }
             }
@@ -882,9 +927,9 @@ private fun ExpenseSectionCard(
 }
 
 /**
- * Total Bar + You Save Card matching IMAGE 3:
- * Dark blue gradient bar with calculator icon and right-aligned total,
- * alongside light green rounded card with leaf icon showing savings (or red over budget).
+ * Total Monthly Expenses Bar + You Save Card:
+ * Inspired by Image 4 and Image 5 with bold white headline, bold cyan accents,
+ * and large prominent amount legible from across the room.
  */
 @Composable
 private fun ReportTotalBar(
@@ -898,13 +943,13 @@ private fun ReportTotalBar(
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left: Dark Navy Gradient Bar
+        // Left: Dark Navy Gradient Bar with bold white total
         Surface(
             modifier = Modifier.weight(3.2f),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(12.dp),
             color = Color(0xFF0B1B36)
         ) {
             Row(
@@ -913,48 +958,52 @@ private fun ReportTotalBar(
                     .background(
                         Brush.horizontalGradient(
                             listOf(
-                                Color(0xFF0A1E3F),
-                                Color(0xFF133E82),
+                                Color(0xFF091830),
+                                Color(0xFF10306A),
                                 Color(0xFF1D5CC5)
                             )
                         )
                     )
-                    .padding(horizontal = 20.dp, vertical = 13.dp),
+                    .padding(horizontal = 22.dp, vertical = 15.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(34.dp)
-                            .background(Color(0x2EFFFFFF), RoundedCornerShape(8.dp)),
+                            .size(40.dp)
+                            .background(Color(0x33FFFFFF), RoundedCornerShape(10.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Calculate,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
-                    Column {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             text = "Total Monthly Expenses",
                             style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 17.sp
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 20.sp
                             ),
                             color = Color.White
                         )
                         Text(
-                            text = "Plan Budget: ₹${formatIndianRupees(planTotalExpensesRupees)}",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
+                            text = if (actualTotalExpensesRupees > 0L) {
+                                "Plan Budget: ₹${formatIndianRupees(planTotalExpensesRupees)}"
+                            } else {
+                                "Plan Allocation: ₹${formatIndianRupees(planTotalExpensesRupees)}"
+                            },
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.SemiBold
                             ),
                             color = Color(0xFF93C5FD)
                         )
@@ -963,18 +1012,18 @@ private fun ReportTotalBar(
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "Actual Spent",
+                        text = if (actualTotalExpensesRupees > 0L) "Actual Spent" else "Total Amount",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
                         ),
                         color = Color(0xFF67E8F9)
                     )
                     Text(
-                        text = "₹${formatIndianRupees(actualTotalExpensesRupees)}",
+                        text = "₹${formatIndianRupees(if (actualTotalExpensesRupees > 0L) actualTotalExpensesRupees else planTotalExpensesRupees)}",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 26.sp
+                            fontSize = 30.sp
                         ),
                         color = Color.White
                     )
@@ -982,23 +1031,23 @@ private fun ReportTotalBar(
             }
         }
 
-        // Right: You Save Card
+        // Right: You Save Card with bold emerald typography
         Surface(
             modifier = Modifier.weight(1.0f),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(12.dp),
             color = if (isPositive) Color(0xFFECFDF5) else Color(0xFFFEF2F2),
             border = BorderStroke(1.dp, if (isPositive) Color(0xFFA7F3D0) else Color(0xFFFECACA))
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(36.dp)
                         .background(
                             if (isPositive) Color(0xFFD1FAE5) else Color(0xFFFEE2E2),
                             CircleShape
@@ -1009,7 +1058,7 @@ private fun ReportTotalBar(
                         imageVector = if (isPositive) Icons.Rounded.Spa else Icons.Rounded.Warning,
                         contentDescription = null,
                         tint = if (isPositive) Color(0xFF059669) else Color(0xFFDC2626),
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
@@ -1017,15 +1066,15 @@ private fun ReportTotalBar(
                     Text(
                         text = if (isPositive) "Actual Saved" else "Over budget",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            fontSize = 11.sp,
+                            fontSize = 12.5.sp,
                             fontWeight = FontWeight.Bold
                         ),
                         color = if (isPositive) Color(0xFF059669) else Color(0xFFDC2626)
                     )
                     Text(
-                        text = "₹${formatIndianRupees(if (isPositive) actualRemainingRupees else -actualRemainingRupees)}",
+                        text = "₹${formatIndianRupees(if (isPositive) (if (actualTotalExpensesRupees > 0L) actualRemainingRupees else planRemainingRupees) else -actualRemainingRupees)}",
                         style = MaterialTheme.typography.titleMedium.copy(
-                            fontSize = 16.sp,
+                            fontSize = 19.sp,
                             fontWeight = FontWeight.ExtraBold
                         ),
                         color = if (isPositive) Color(0xFF047857) else Color(0xFFB91C1C)
@@ -1033,10 +1082,10 @@ private fun ReportTotalBar(
                     Text(
                         text = "Plan: ₹${formatIndianRupees(planRemainingRupees)}",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            fontSize = 9.5.sp,
-                            fontWeight = FontWeight.Normal
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
                         ),
-                        color = Color(0xFF64748B)
+                        color = Color(0xFF475569)
                     )
                 }
             }
@@ -1045,11 +1094,12 @@ private fun ReportTotalBar(
 }
 
 /**
- * Four Themed Summary Cards in a single row matching IMAGE 3:
+ * Four Themed Summary Cards in a single row:
  * 1. Salary vs Expenses (blue)
  * 2. Savings & Investments (green)
  * 3. Actual Living / Travel (purple)
  * 4. Annual Summary (orange)
+ * Enforced with high contrast and bold typography.
  */
 @Composable
 private fun ReportFourSummaryCards(
@@ -1061,7 +1111,6 @@ private fun ReportFourSummaryCards(
     planRemainingRupees: Long,
     actualRemainingRupees: Long
 ) {
-    // Dynamic savings lines from actual data
     val savingsItems = rows.filter {
         it.categoryId in listOf(
             SeedIds.INVESTMENT_SIP,
@@ -1081,18 +1130,23 @@ private fun ReportFourSummaryCards(
     }
 
     val actualSavingsRupees = savingsItems.sumOf { it.actualAmountMinor } / 100L
+    val effectiveSavingsRupees = if (actualSavingsRupees > 0L) actualSavingsRupees else planSavingsRupees
 
     val planLivingRupees = (planTotalExpensesRupees - planSavingsRupees).coerceAtLeast(0L)
-    val actualLivingRupees = (actualTotalExpensesRupees - actualSavingsRupees).coerceAtLeast(0L)
+    val actualLivingRupees = if (actualTotalExpensesRupees > 0L) {
+        (actualTotalExpensesRupees - actualSavingsRupees).coerceAtLeast(0L)
+    } else {
+        planLivingRupees
+    }
 
-    val annualActualExpensesRupees = actualTotalExpensesRupees * 12L
-    val annualPlanExpensesRupees = planTotalExpensesRupees * 12L
+    val effectiveExpensesRupees = if (actualTotalExpensesRupees > 0L) actualTotalExpensesRupees else planTotalExpensesRupees
+    val annualExpensesRupees = effectiveExpensesRupees * 12L
     val annualSalaryRupees = salaryRupees * 12L
-    val annualBalanceRupees = annualSalaryRupees - annualActualExpensesRupees
+    val annualBalanceRupees = annualSalaryRupees - annualExpensesRupees
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Card 1: Salary vs Expenses
         SummaryCardContainer(
@@ -1103,22 +1157,26 @@ private fun ReportFourSummaryCards(
             borderColor = Color(0xFFBFDBFE)
         ) {
             MetricRow(label = "In-hand Salary", value = "₹${formatIndianRupees(salaryRupees)}")
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(5.dp))
             MetricRow(label = "Plan Budget", value = "₹${formatIndianRupees(planTotalExpensesRupees)}")
-            Spacer(modifier = Modifier.height(4.dp))
-            MetricRow(label = "Actual Spent", value = "₹${formatIndianRupees(actualTotalExpensesRupees)}")
-            Spacer(modifier = Modifier.height(8.dp))
-            val isPos = actualRemainingRupees >= 0
+            Spacer(modifier = Modifier.height(5.dp))
+            MetricRow(
+                label = if (actualTotalExpensesRupees > 0L) "Actual Spent" else "Total Expenses",
+                value = "₹${formatIndianRupees(effectiveExpensesRupees)}"
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            val isPos = (if (actualTotalExpensesRupees > 0L) actualRemainingRupees else planRemainingRupees) >= 0
+            val remRupees = if (actualTotalExpensesRupees > 0L) actualRemainingRupees else planRemainingRupees
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (isPos) "Actual Saved" else "Deficit",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                    text = if (isPos) "Remaining" else "Deficit",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 13.sp
                     ),
                     color = if (isPos) Color(0xFF047857) else Color(0xFFB91C1C)
                 )
@@ -1128,17 +1186,17 @@ private fun ReportFourSummaryCards(
                             if (isPos) Color(0xFFD1FAE5) else Color(0xFFFEE2E2),
                             RoundedCornerShape(8.dp)
                         )
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
                 ) {
                     Text(
                         text = if (isPos) {
-                            "₹${formatIndianRupees(actualRemainingRupees)} / month"
+                            "₹${formatIndianRupees(remRupees)} / month"
                         } else {
-                            "₹${formatIndianRupees(-actualRemainingRupees)} / month"
+                            "₹${formatIndianRupees(-remRupees)} / month"
                         },
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.5.sp
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 13.5.sp
                         ),
                         color = if (isPos) Color(0xFF065F46) else Color(0xFF991B1B)
                     )
@@ -1157,43 +1215,48 @@ private fun ReportFourSummaryCards(
         ) {
             if (savingsItems.isNotEmpty()) {
                 savingsItems.take(3).forEachIndexed { i, it ->
-                    if (i > 0) Spacer(modifier = Modifier.height(4.dp))
+                    if (i > 0) Spacer(modifier = Modifier.height(5.dp))
                     val itActual = it.actualAmountMinor / 100L
                     val itPlan = it.amountMinor / 100L
+                    val displayVal = if (itActual > 0L && itActual != itPlan) {
+                        "₹${formatIndianRupees(itActual)} (Plan: ₹${formatIndianRupees(itPlan)})"
+                    } else {
+                        "₹${formatIndianRupees(itPlan)}"
+                    }
                     MetricRow(
                         label = it.title.substringBefore("(").trim(),
-                        value = "₹${formatIndianRupees(itActual)} (Plan: ₹${formatIndianRupees(itPlan)})"
+                        value = displayVal
                     )
                 }
             } else {
                 board.savings.take(3).forEachIndexed { i, it ->
-                    if (i > 0) Spacer(modifier = Modifier.height(4.dp))
+                    if (i > 0) Spacer(modifier = Modifier.height(5.dp))
                     MetricRow(label = it.label, value = it.value)
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "Total Actual Saved (Plan: ₹${formatIndianRupees(planSavingsRupees)})",
+                    text = "Total Savings/Investment",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Medium
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold
                     ),
                     color = Color(0xFF065F46)
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(3.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color(0xFFD1FAE5), RoundedCornerShape(8.dp))
-                        .padding(vertical = 4.dp),
+                        .padding(vertical = 5.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "₹${formatIndianRupees(actualSavingsRupees)} / month",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
+                        text = "₹${formatIndianRupees(effectiveSavingsRupees)} / month",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 14.sp
                         ),
                         color = Color(0xFF065F46)
                     )
@@ -1209,34 +1272,43 @@ private fun ReportFourSummaryCards(
             title = "Actual Living / Travel",
             borderColor = Color(0xFFDDD6FE)
         ) {
-            MetricRow(label = "Total Actual Expenses", value = "₹${formatIndianRupees(actualTotalExpensesRupees)}")
-            Spacer(modifier = Modifier.height(4.dp))
-            MetricRow(label = "Less Actual Savings", value = "(₹${formatIndianRupees(actualSavingsRupees)})")
-            Spacer(modifier = Modifier.height(4.dp))
-            MetricRow(label = "Plan Living Budget", value = "₹${formatIndianRupees(planLivingRupees)}")
-            Spacer(modifier = Modifier.height(6.dp))
+            MetricRow(
+                label = "Total Expenses",
+                value = "₹${formatIndianRupees(effectiveExpensesRupees)}"
+            )
+            Spacer(modifier = Modifier.height(5.dp))
+            MetricRow(
+                label = "Less Savings/Investments",
+                value = "(₹${formatIndianRupees(effectiveSavingsRupees)})"
+            )
+            Spacer(modifier = Modifier.height(5.dp))
+            MetricRow(
+                label = "Plan Living Budget",
+                value = "₹${formatIndianRupees(planLivingRupees)}"
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "Actual Living Spending",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 9.5.sp,
-                        fontWeight = FontWeight.Medium
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold
                     ),
                     color = Color(0xFF6D28D9)
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(3.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color(0xFFEDE9FE), RoundedCornerShape(8.dp))
-                        .padding(vertical = 4.dp),
+                        .padding(vertical = 5.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "₹${formatIndianRupees(actualLivingRupees)} / month",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 14.sp
                         ),
                         color = Color(0xFF6D28D9)
                     )
@@ -1260,27 +1332,33 @@ private fun ReportFourSummaryCards(
                 ) {
                     Column {
                         Text(
-                            text = "Actual Total (x12)",
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
-                            color = Color(0xFF334155)
+                            text = "Total Allocation",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = Color(0xFF1E293B)
                         )
                         Text(
-                            text = "Plan: ₹${formatIndianRupees(annualPlanExpensesRupees)}",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                            text = "₹${formatIndianRupees(effectiveExpensesRupees)} × 12",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
                             color = Color(0xFF64748B)
                         )
                     }
                     Text(
-                        text = "₹${formatIndianRupees(annualActualExpensesRupees)}",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
+                        text = "₹${formatIndianRupees(annualExpensesRupees)}",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 14.5.sp
                         ),
                         color = Color(0xFFC2410C)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(5.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1290,20 +1368,26 @@ private fun ReportFourSummaryCards(
                     Column {
                         Text(
                             text = "Annual Salary",
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
-                            color = Color(0xFF334155)
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = Color(0xFF1E293B)
                         )
                         Text(
                             text = "₹${formatIndianRupees(salaryRupees)} × 12",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
                             color = Color(0xFF64748B)
                         )
                     }
                     Text(
                         text = "₹${formatIndianRupees(annualSalaryRupees)}",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 14.5.sp
                         ),
                         color = Color(0xFFC2410C)
                     )
@@ -1318,23 +1402,23 @@ private fun ReportFourSummaryCards(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Annual Net Balance",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                    text = "Annual Balance",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 13.sp
                     ),
                     color = Color(0xFFC2410C)
                 )
                 Box(
                     modifier = Modifier
                         .background(Color(0xFFFFEDD5), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
                 ) {
                     Text(
                         text = "₹${formatIndianRupees(annualBalanceRupees)}",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.5.sp
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 13.5.sp
                         ),
                         color = Color(0xFFC2410C)
                     )
@@ -1356,23 +1440,23 @@ private fun SummaryCardContainer(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(12.dp),
         color = Color(0xFFFBFDFF),
         border = BorderStroke(1.dp, borderColor)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp)
+                .padding(14.dp)
         ) {
             // Header Row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(28.dp)
+                        .size(32.dp)
                         .background(badgeColor, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1380,7 +1464,7 @@ private fun SummaryCardContainer(
                         imageVector = badgeIcon,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
 
@@ -1388,22 +1472,25 @@ private fun SummaryCardContainer(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 15.sp
                         ),
                         color = Color(0xFF0F172A)
                     )
                     if (subtitle != null) {
                         Text(
                             text = subtitle,
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
                             color = Color(0xFF64748B)
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             content()
         }
@@ -1419,14 +1506,17 @@ private fun MetricRow(label: String, value: String) {
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
-            color = Color(0xFF475569)
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.Medium
+            ),
+            color = Color(0xFF334155)
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 14.sp
             ),
             color = Color(0xFF0F172A)
         )
@@ -1434,9 +1524,9 @@ private fun MetricRow(label: String, value: String) {
 }
 
 /**
- * Bottom Row matching IMAGE 3:
- * Left: Donut Chart Card (donut with center total + 6 category percentage rows)
- * Right: Quick Summary Card (green theme, 6 metric rows, potted plant & coins illustration, italic balance status)
+ * Bottom Row:
+ * Left: Donut Chart Card (thick donut with bold center total + 6 category breakdown rows with bold percentages)
+ * Right: Quick Summary Card (green theme, 6 bold metric rows, potted plant & coins illustration, italic balance status)
  */
 @Composable
 private fun ReportBottomRow(
@@ -1446,30 +1536,36 @@ private fun ReportBottomRow(
     actualRemainingRupees: Long,
     slices: List<DonutSliceUi>
 ) {
+    val effectiveExpensesRupees = if (actualTotalExpensesRupees > 0L) actualTotalExpensesRupees else planTotalExpensesRupees
+    val annualExpensesRupees = effectiveExpensesRupees * 12L
+    val annualSalaryRupees = salaryRupees * 12L
+    val annualBalanceRupees = annualSalaryRupees - annualExpensesRupees
+    val remainingRupees = salaryRupees - effectiveExpensesRupees
+
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Left: Category Donut Chart Card
         Surface(
             modifier = Modifier.weight(1.05f),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(12.dp),
             color = Color.White,
-            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            border = BorderStroke(1.dp, Color(0xFFCBD5E1))
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
+                    .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Donut Chart Canvas with Center Hole
                 Box(
-                    modifier = Modifier.size(150.dp),
+                    modifier = Modifier.size(160.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Canvas(modifier = Modifier.size(150.dp)) {
-                        val strokeWidth = 26.dp.toPx()
+                    Canvas(modifier = Modifier.size(160.dp)) {
+                        val strokeWidth = 28.dp.toPx()
                         val arcSize = size.width - strokeWidth
                         val topLeft = Offset(strokeWidth / 2, strokeWidth / 2)
                         var startAngle = -90f
@@ -1494,25 +1590,30 @@ private fun ReportBottomRow(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "Monthly Expenses",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Medium),
-                            color = Color(0xFF64748B)
-                        )
-                        Text(
-                            text = "Plan: ₹${formatIndianRupees(planTotalExpensesRupees)}",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 11.5.sp
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
                             ),
-                            color = Color(0xFF334155)
+                            color = Color(0xFF475569)
                         )
                         Text(
-                            text = "Actual: ₹${formatIndianRupees(actualTotalExpensesRupees)}",
-                            style = MaterialTheme.typography.titleSmall.copy(
+                            text = "₹${formatIndianRupees(effectiveExpensesRupees)}",
+                            style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 12.5.sp
+                                fontSize = 20.sp
                             ),
-                            color = if (actualTotalExpensesRupees > planTotalExpensesRupees) Color(0xFFDC2626) else Color(0xFF0F766E)
+                            color = Color(0xFF0F172A)
                         )
+                        if (actualTotalExpensesRupees > 0L && actualTotalExpensesRupees != planTotalExpensesRupees) {
+                            Text(
+                                text = "Plan: ₹${formatIndianRupees(planTotalExpensesRupees)}",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.5.sp
+                                ),
+                                color = Color(0xFF0284C7)
+                            )
+                        }
                     }
                 }
 
@@ -1520,8 +1621,8 @@ private fun ReportBottomRow(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(start = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                        .padding(start = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
                 ) {
                     slices.forEach { slice ->
                         Row(
@@ -1530,26 +1631,29 @@ private fun ReportBottomRow(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(9.dp)
+                                    .size(11.dp)
                                     .background(slice.color, CircleShape)
                             )
 
-                            Spacer(modifier = Modifier.width(7.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
 
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = slice.title,
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontSize = 13.5.sp,
+                                        fontWeight = FontWeight.Bold
                                     ),
-                                    color = Color(0xFF1E293B),
+                                    color = Color(0xFF0F172A),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     text = "(${slice.subCategories})",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.8.sp),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Medium
+                                    ),
                                     color = Color(0xFF64748B),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -1558,9 +1662,9 @@ private fun ReportBottomRow(
 
                             Text(
                                 text = slice.percentageText,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 14.sp
                                 ),
                                 color = Color(0xFF0F172A),
                                 textAlign = TextAlign.End
@@ -1574,23 +1678,23 @@ private fun ReportBottomRow(
         // Right: Quick Summary Card
         Surface(
             modifier = Modifier.weight(0.95f),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(12.dp),
             color = Color(0xFFF2FBF6),
             border = BorderStroke(1.dp, Color(0xFFA7F3D0))
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp)
+                    .padding(16.dp)
             ) {
                 // Header
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(24.dp)
+                            .size(28.dp)
                             .background(Color(0xFF22C55E), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1598,21 +1702,21 @@ private fun ReportBottomRow(
                             imageVector = Icons.Rounded.Check,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
                     Text(
                         text = "Quick Summary",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 17.sp
                         ),
                         color = Color(0xFF166534)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1621,7 +1725,7 @@ private fun ReportBottomRow(
                     // Metric rows
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         QuickSummaryRow(
                             icon = Icons.Rounded.Schedule,
@@ -1630,8 +1734,8 @@ private fun ReportBottomRow(
                         )
                         QuickSummaryRow(
                             icon = Icons.AutoMirrored.Rounded.ReceiptLong,
-                            label = "Actual total expenses",
-                            value = "₹${formatIndianRupees(actualTotalExpensesRupees)}"
+                            label = if (actualTotalExpensesRupees > 0L) "Actual total expenses" else "Total expenses",
+                            value = "₹${formatIndianRupees(effectiveExpensesRupees)}"
                         )
                         QuickSummaryRow(
                             icon = Icons.Rounded.AccountBalanceWallet,
@@ -1640,18 +1744,18 @@ private fun ReportBottomRow(
                         )
                         QuickSummaryRow(
                             icon = Icons.Rounded.Schedule,
-                            label = "Monthly remaining (Actual)",
-                            value = "₹${formatIndianRupees(actualRemainingRupees)}"
+                            label = "Monthly remaining",
+                            value = "₹${formatIndianRupees(remainingRupees)}"
                         )
                         QuickSummaryRow(
                             icon = Icons.Rounded.AccountBalance,
                             label = "Total annual salary",
-                            value = "₹${formatIndianRupees(salaryRupees * 12L)}"
+                            value = "₹${formatIndianRupees(annualSalaryRupees)}"
                         )
                         QuickSummaryRow(
                             icon = Icons.Rounded.Star,
-                            label = "Annual balance (Actual)",
-                            value = "₹${formatIndianRupees((salaryRupees * 12L) - (actualTotalExpensesRupees * 12L))}"
+                            label = "Annual balance",
+                            value = "₹${formatIndianRupees(annualBalanceRupees)}"
                         )
                     }
 
@@ -1659,36 +1763,36 @@ private fun ReportBottomRow(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(start = 6.dp)
+                        modifier = Modifier.padding(start = 8.dp)
                     ) {
-                        if (actualRemainingRupees >= 0) {
+                        if (remainingRupees >= 0) {
                             Text(
                                 text = "(\u00A0Good\nFinancial\nBalance!\u00A0)",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontStyle = FontStyle.Italic,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 11.5.sp,
                                     textAlign = TextAlign.Center,
-                                    lineHeight = 12.sp
+                                    lineHeight = 14.sp
                                 ),
                                 color = Color(0xFF15803D)
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(5.dp))
                         }
 
                         PlantAndCoinsIllustration(
-                            modifier = Modifier.size(92.dp, 96.dp)
+                            modifier = Modifier.size(96.dp, 100.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
                     text = "All calculations are accurate and verified for each expense item.",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 9.5.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center
                     ),
                     color = Color(0xFF15803D),
@@ -1712,28 +1816,31 @@ private fun QuickSummaryRow(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.weight(1f)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = Color(0xFF16A34A),
-                modifier = Modifier.size(12.dp)
+                modifier = Modifier.size(14.dp)
             )
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                color = Color(0xFF334155),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                color = Color(0xFF1E293B),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.5.sp
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 13.5.sp
             ),
             color = Color(0xFF0F172A)
         )
@@ -1999,3 +2106,4 @@ private fun defaultDonutSlicesForReport(): List<DonutSliceUi> {
         DonutSliceUi("Others", "Electricity, Wi-Fi, Mobile, Medicine, etc.", "29.3%", 29.3f, Color(0xFF64748B))
     )
 }
+
